@@ -1,0 +1,44 @@
+syntax="proto3";
+package proto;
+
+/*
+Server-Server Proto
+*/
+
+//proto type
+enum SS_PROTO_TYPE {
+  HEART_BEAT_REQ = 0;
+  HEART_BEAT_RSP = 1;
+}
+
+//main msg
+message SSMsgReq {
+  SS_PROTO_TYPE proto_type = 1;
+  oneof msg_body {
+    MsgHeartBeatReq heart_beat = 20;    
+    MsgLoginReq login = 21;
+  }  
+}
+
+message SSMsgRsp {
+  SS_PROTO_TYPE proto_type = 1;
+  oneof msg_body {
+    MsgLoginRsp login = 21;
+  }
+}
+
+
+//sub msg
+message MsgHeartBeatReq {
+  int64 ts = 1;
+}
+
+message MsgLoginReq {
+  int64 uid = 1;
+  string name = 2;
+}
+
+message MsgLoginRsp {
+  int64 uid = 1;
+  bool  result = 2;
+}

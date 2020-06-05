@@ -1,0 +1,13 @@
+{
+  "game_config_table":
+  {
+    "count": 4,
+    "res":
+    [
+      {"name":"max_act", "value":"150"},
+      {"name":"act_open", "value":"2020-01-01 00:00:30"},
+      {"name":"act_close", "value":"2028-01-01 00:00:30"},
+      {"name":"max_monster", "value":"1500"}
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "task":"sgame" , 
+  "deploy_host":"" ,
+  "deploy_timeout":60, 
+  "remote_user":"nmsoccer" ,
+  "remote_pass":"****" ,
+  
+  "procs":[
+    {"name":"conn_serv-1" , "bin":["../conn_serv/conn_serv"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group1/conn_serv/" , "copy_cfg":1 , "cmd":"./conn_serv -N sgame -p 10001 -f conf/conn_serv.json"},
+	{"name":"logic_serv-1" , "bin":["../logic_serv/logic_serv" , "../logic_serv/table" , "../logic_serv/table_desc"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group1/logic_serv/" , "copy_cfg":1 , "cmd":"./logic_serv -N sgame -p 20001 -f conf/logic_serv.json"},        
+    {"name":"db_serv-1" ,   "bin":["../db_serv/db_serv"] , "host":"" , "host_dir":"/home/nmsoccer/sg/db/db_serv1/" , "copy_cfg":1 , "cmd":"./db_serv -N sgame -p 30001 -f conf/db_serv.json"}    	
+  ],
+
+  "proc_cfgs":[
+    {"name":"conn_serv-1" ,  "cfg_name":"conf/conn_serv.json" , "cfg_tmpl":"./tmpl/conn_serv.tmpl" , "tmpl_param":"proc_name=conn_serv-1,logic_serv=20001,listen_addr=:18909"},    
+    {"name":"logic_serv-1" , "cfg_name":"conf/logic_serv.json" , "cfg_tmpl":"./tmpl/logic_serv.tmpl" , "tmpl_param":"proc_name=logic_serv-1,conn_serv=10001,master_db=30001,slave_db=0"},	
+	{"name":"db_serv-1" ,    "cfg_name":"conf/db_serv.json" ,    "cfg_tmpl":"./tmpl/db_serv.tmpl" , "tmpl_param":"proc_name=db_serv-1,logic_serv_start=20001,logic_serv_end=20001,redis_addr=127.0.0.1:6698"}	
+  ]
+   
+}

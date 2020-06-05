@@ -1,0 +1,24 @@
+{
+  "item_timing_table":
+  {
+    "count": 3,
+    "res":
+    [
+      {"id":10102, "expire_time":"2020-03-01 22:30:00", "show":0},
+      {"id":10405, "expire_time":"2020-03-02 14:25:01", "show":0},
+      {"id":10506, "expire_time":"2020-05-01 21:43:00", "show":1}
+    ]
+  },
+  "item_table":
+  {
+    "count": 5,
+    "res":
+    [
+      {"id":10102, "name":"头盔", "price":100, "type":101, "pos":[0 , 1 , 4], "can_sell":0},
+      {"id":10203, "name":"帽子", "price":200, "type":102, "pos":[], "can_sell":1},
+      {"id":10304, "name":"上衣", "price":300, "type":103, "pos":[2], "can_sell":0},
+      {"id":10405, "name":"双手剑", "price":400, "type":104, "pos":[], "can_sell":0},
+      {"id":10506, "name":"靴子", "price":500, "type":105, "pos":[3, 7], "can_sell":0}
+    ]
+  }
+}
