@@ -1,12 +1,12 @@
 package lib
 
 import (
-    "sgame/proto"
+    "sgame/proto/ss"
     "time"
 )
 
 const (
-    MESSAGE_LEN = 200*1024 //200k
+    MESSAGE_LEN = ss.MAX_SS_MSG_SIZE //200k
 )
 
 type Msg struct{
@@ -46,9 +46,8 @@ func RecvMsg(pconfig *Config) int64 {
         handle_pkg++;
         //unpack
         msg = msg[0:recv];
-        //log.Debug("recved:%d sender:%d v:%v" , recv , pmsg.sender , msg);
-        var ss_req = new(proto.SSMsgReq);
-        err := proto.UnPack(msg, ss_req);
+        var ss_msg = new(ss.SSMsg);
+        err := ss.UnPack(msg, ss_msg);
         if err != nil {
     	    log.Err("unpack failed! err:%v" , err);
     	    continue;
@@ -56,11 +55,13 @@ func RecvMsg(pconfig *Config) int64 {
     	//log.Debug("unpack success! v:%v and %v" , *ss_req , *(ss_req.GetHeartBeat()));
 
 		//dispatch          
-        switch ss_req.ProtoType {
-        	case proto.SS_PROTO_TYPE_HEART_BEAT_REQ:
-        	    RecvHeartBeatReq(pconfig, ss_req.GetHeartBeat(), pmsg.sender);
+        switch ss_msg.ProtoType {
+        	case ss.SS_PROTO_TYPE_HEART_BEAT_REQ:
+        	    RecvHeartBeatReq(pconfig, ss_msg.GetHeartBeatReq(), pmsg.sender);
+        	case ss.SS_PROTO_TYPE_PING_RSP:
+        	    RecvPingRspMsg(pconfig, ss_msg.GetPingRsp());    
         	default:
-        	    log.Err("%s fail! unknown proto type:%v" , _func_ , ss_req.ProtoType);
+        	    log.Err("%s fail! unknown proto type:%v" , _func_ , ss_msg.ProtoType);
         }  
     }
     

@@ -12,6 +12,8 @@ import(
 )
 
 const (
+	DEFAULT_SERVER_SLEEP_IDLE=5 //ms. server sleeps when idle 
+	
     INFO_EXIT = iota //0 server exit
     INFO_USR1 //1 server reload config
     INFO_USR2 //2 reload tables

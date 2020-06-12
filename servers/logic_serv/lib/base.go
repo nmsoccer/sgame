@@ -94,12 +94,14 @@ func ServerExit(pconfig *Config) {
 		pconfig.Comm.Log.Info("%s" , "server exit...");
 		pconfig.Comm.Log.Close();
 	}
+	time.Sleep(1 * time.Second);
 	os.Exit(0);	
 }
 
 //Main Proc
 func ServerStart(pconfig *Config) {
 	var log = pconfig.Comm.Log;
+	var default_sleep = time.Duration(comm.DEFAULT_SERVER_SLEEP_IDLE);
 	log.Info("%s starts---%v" , pconfig.FileConfig.ProcName , os.Args);
 	
 	//each support routine
@@ -117,7 +119,7 @@ func ServerStart(pconfig *Config) {
 		handle_tick(pconfig);
 		
 		//sleep		
-		time.Sleep(time.Millisecond * 10);     
+		time.Sleep(time.Millisecond * default_sleep);     
 	}
 }
 

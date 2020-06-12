@@ -203,6 +203,24 @@ func SLog(sld int , log_level int , format string, arg ...interface{}) int {
 }
 
 /***
+Wrapper Log
+@sld:opened slog descriptor
+@log_level:refer to SL_XX.the level of this log.If log_level < filt_level(slog_open),it will not printed.
+@RETVALUE:
+-1:failed(err msg can be found in slog.log). 0:success
+*/
+func SLogBytes(sld int , log_level int , bs []byte) int {
+	str := string(bs);
+	//fmt.Printf("SLog:%s\n", str);
+	cs := C.CString(str);
+	defer C.free(unsafe.Pointer(cs));
+	
+	result := C.wrap_slog_log(C.int(sld) ,C.int(log_level) , cs);
+	return int(result);
+}
+
+
+/***
 Change Attr
 @sld:opened slog descriptor
 @filt_level:refer to SLOG_LEVEL. If No Change Sets to -1.

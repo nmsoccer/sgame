@@ -6,6 +6,15 @@ import (
 
 const(
   TAG_LEN=1
+  
+  //pkg option
+  PKG_OP_NORMAL=0 //normal pkg
+  PKG_OP_ECHO=1 //echo client <-> connect
+  PKG_OP_STAT=2  //display connect server stat
+  PKG_OP_MAX=32 //max option value
+  
+  //STAT_KEY
+  FETCH_STAT_KEY="cs...39&suomei...32&withdraw"
 )
 
 
@@ -16,7 +25,7 @@ Tag   +    Len         +          Value
 
 
 *Tag: 1Byte
-**Tag: 0 0 0 0 0 | 0 0 0  low 3bits: Bytes of len
+**Tag: 0 0 0 0 0 | 0 0 0  high-5bits:option , low-3bits: Bytes of len
 
 *Len: 1 or 2 or 4Byte
 **len [1,0xFF] :1Byte
@@ -79,16 +88,34 @@ func UnPackHead(buff []byte , tag *uint8 , data_lenth *uint32) int {
 	return TAG_LEN + 4;
 }
 
+//predict pkg-len
+func GetPkgLen(pkg_data []byte) int{
+	if len(pkg_data) <= 0xFF {
+		return TAG_LEN+1+len(pkg_data);
+	}
+	
+	if len(pkg_data) <= 0xFFFF {
+		return TAG_LEN+2+len(pkg_data);
+	}
+		
+	return TAG_LEN + 4 + len(pkg_data);
+}
+
 
 /*
 pack head to buff
 @return:  -1:failed else:success(head_len)
 */
-func PackHead(buff []byte , data_lenth uint32) int {
+func PackHead(buff []byte , data_lenth uint32 , pkg_option uint8) int {
 	buff_len := len(buff);
 	if data_lenth ==0 {
 		return -1;
 	}
+	
+	if pkg_option >= PKG_OP_MAX { //only 2^5
+		return -1;
+	}
+	
 	
 	//lenth:1Byte
     if data_lenth <= 0xFF {
@@ -97,6 +124,7 @@ func PackHead(buff []byte , data_lenth uint32) int {
     	}
     	
     	buff[0] = 0x01; //tag
+    	buff[0] |= (pkg_option << 3);
     	buff[1] = uint8(data_lenth);
     	return 1+TAG_LEN;
     }
@@ -108,6 +136,7 @@ func PackHead(buff []byte , data_lenth uint32) int {
     	}
     	
     	buff[0] = 0x02; //tag
+    	buff[0] |= (pkg_option << 3);
     	binary.BigEndian.PutUint16(buff[1:3], uint16(data_lenth));
     	return TAG_LEN+2;
     }
@@ -118,9 +147,17 @@ func PackHead(buff []byte , data_lenth uint32) int {
     }
     
     buff[0] = 0x04; //tag
+    buff[0] |= (pkg_option << 3);
     binary.BigEndian.PutUint32(buff[1:5], data_lenth);
     return TAG_LEN+4;	
 }
+
+//get pkg-option
+//@return:PKG_OP_XX
+func PkgOption(tag uint8) uint8 {
+	return tag >> 3;
+}
+
 
 
 /*UnPackPkg from raw data
@@ -159,12 +196,13 @@ func UnPackPkg(raw []byte) (uint8 , []byte , int){
 
 
 /*
-Pack pkg_data to pkg
+Pack pkg_data to pkg.
+@pkg_type: ==0 normal pkg.  > 0 PKG_OP_XX means special pkg to server
 @return: -1:failed else:success(pkg_len)
 */
-func PackPkg(pkg_buff []byte , pkg_data []byte) int {
+func PackPkg(pkg_buff []byte , pkg_data []byte , pkg_option uint8) int {
     //pack head
-    head_len := PackHead(pkg_buff , uint32(len(pkg_data)));
+    head_len := PackHead(pkg_buff , uint32(len(pkg_data)) , pkg_option);
     if head_len < 0 {
     	return -1;
     }
@@ -178,4 +216,5 @@ func PackPkg(pkg_buff []byte , pkg_data []byte) int {
     pkg_buff = append(pkg_buff[:head_len] , pkg_data...);
     return head_len + len(pkg_data);
 }
+
 

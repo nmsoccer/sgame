@@ -1,0 +1,116 @@
+package cs
+
+import (
+  "encoding/json"
+  "encoding/binary"
+  "errors"
+)
+
+/*
+This is a cs-proto using json format
+*/
+
+/*
+CS PROTO ID
+*/
+const (
+  CS_PROTO_START=0	
+  CS_PING_REQ=1
+  CS_PING_RSP=2
+  CS_PROTO_END=3	
+)
+
+/*
+* Pack id and data to buff
+* @return: pkg_len , error
+*/
+func PackIdData(buff []byte , id int , data []byte) (int , error) {
+    //pack data
+	pkg_len := 4 + len(data);
+	if len(buff) < pkg_len {
+		return 0 , errors.New("buff not enough!");
+	}
+	
+	//pack id
+	binary.BigEndian.PutUint32(buff[0:4], uint32(id));
+	
+	//copy
+	copy(buff[4:] , data);
+	return pkg_len , nil;    	
+}
+
+/*
+* unpack pkg data to id and data
+* @return: id , data , error
+*/
+func UnPackIdData(pkg []byte) (int , []byte , error) {
+    //unpack
+    if len(pkg) < 4 {
+    	return 0 , nil , errors.New("pkg not enough!");
+    }
+    
+    //unpack id
+    var id uint32 = binary.BigEndian.Uint32(pkg[:4]);
+    
+    //return data
+    return int(id) , pkg[4:] , nil;	
+}
+
+
+
+
+/*
+*Encode ProtoId and Msg to buff
+@return msg_len , error
+*/
+func EncodeProto(msg_buff []byte , proto_id int , msg interface{}) (int , error) {
+	var err error;
+	var coded []byte;
+	
+	if proto_id<=CS_PROTO_START || proto_id>=CS_PROTO_END {
+		return 0 , errors.New("proto_id illegal");
+	}
+		
+	//encode
+	coded , err = json.Marshal(msg);
+
+	//check err
+	if err != nil {
+		return 0 , err;
+	}
+
+    //pack
+    return PackIdData(msg_buff , proto_id, coded);
+}
+
+/*
+@return: proto_id , *msg , error
+*/
+func DecodeProto(pkg []byte) (int , interface{} , error) {
+	var err error;
+	
+	//unpack raw
+	proto_id , msg_data , err := UnPackIdData(pkg);
+	if err != nil {
+		return 0 , nil , err;
+	}
+	
+	//new msg
+	var pmsg interface{};
+	switch proto_id {
+		case CS_PING_REQ:
+		    pmsg = new(CSPingReq);		    
+		case CS_PING_RSP:
+		    pmsg = new(CSPingRsp);
+		default:
+		    return proto_id , nil , errors.New("illegal proto id");    
+	}
+	
+	//decode
+	err = json.Unmarshal(msg_data, pmsg);
+	if err != nil {
+		return proto_id , nil , err;
+	}
+	
+	return proto_id , pmsg , nil;
+}

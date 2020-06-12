@@ -1,0 +1,17 @@
+syntax="proto3"; //版本号
+package ss;  //包名
+enum ClassName{   //枚举
+    class1=0;  //标号 必须从 0开始
+    class2=1;
+    class3=2;
+}
+message Student{ //消息，对应于Go的结构体
+  string name=1; //1:标号，唯一 即可（相当于数据库中的Id，不一定要从1 ，2的顺序依次排列。）
+  int32 age=2;  //必须指定整型的范围，如int32，int64
+  string address=3;
+  ClassName cn=4;
+}
+message Students{
+   repeated Student person=1;  // repeated 修饰，相当于Go中切片
+   string school=2;
+}

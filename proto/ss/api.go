@@ -1,10 +1,15 @@
-package proto
+package ss
 
 import (
   "fmt"
   "errors"
   "google.golang.org/protobuf/proto"
 )
+
+const (
+	MAX_SS_MSG_SIZE=(200*1024) //200k
+)
+
 
 func Pack(i interface{}) ([]byte, error) {
 	fmt.Printf("try to pack...\n");
