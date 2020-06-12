@@ -1,0 +1,27 @@
+#!/usr/bin/expect
+set ip [lindex $argv 0]
+set user [lindex $argv 1]
+set pass [lindex $argv 2]
+set local_file [lindex $argv 3]
+set remote_dir [lindex $argv 4]
+
+if {$argc!=5} {
+  send_user "usage:ip user pass local_files remote_dir\n"
+  exit 
+}
+
+spawn scp ${local_file} ${user}@${ip}:${remote_dir}
+expect {
+  "password:" {
+    send "$pass\n"; exp_continue
+  };
+  "*yes/no*" {
+    send "yes\n"; 
+    exp_continue
+  }
+  eof {
+    exit 
+  }
+}
+
+interact 
