@@ -11,6 +11,7 @@ A Simple Game Framework  一个简单的游戏框架
 
 
 ### 进程监控
-框架提供了一套简单的进程监控和可视化管理机制，包括了上报协议及管理进程，这里是个简单的页面展示
+框架提供了一套简单的进程监控和可视化管理机制，包括了上报协议及管理进程.登陆manage server 配置里的ip:port(这里是localhost:8080)可以打开页面  
+这里是个简单展示  
 ![管理页面](https://github.com/nmsoccer/sgame/blob/master/pic/manage.png)
 ### to be continue
