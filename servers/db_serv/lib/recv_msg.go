@@ -59,6 +59,8 @@ func RecvMsg(pconfig *Config) int64 {
         switch ss_msg.ProtoType {
         	case ss.SS_PROTO_TYPE_HEART_BEAT_REQ:
         	    RecvHeartBeatReq(pconfig, ss_msg.GetHeartBeatReq() , pmsg.sender);
+        	case ss.SS_PROTO_TYPE_LOGIN_REQ:
+        	    RecvUserLoginReq(pconfig, ss_msg.GetLoginReq() , pmsg.sender);    
         	default:
         	    log.Err("%s fail! unknown proto type:%v" , _func_ , ss_msg.ProtoType);
         }  

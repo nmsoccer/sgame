@@ -9,21 +9,25 @@ import(
 
 
 type FileConfig struct {
-	ProcName string `json:"proc_name"`
+//	ProcName string `json:"proc_name"`
 	ConnServ int `json:"conn_serv"`
 	MasterDb int `json:"master_db"`
 	SlaveDb int `json:"slave_db"`
 	LogFile string `json:"log_file"`
+	ManageAddr []string `json:"manage_addr"`
 }
 
 
 type Config struct {
 	NameSpace string
 	ProcId int
+	ProcName string
 	ConfigFile string
 	FileConfig *FileConfig
 	Comm *comm.CommConfig;
-	TableMap comm.TableMap;	
+	TableMap comm.TableMap;
+	ReportServ *comm.ReportServ; //report to manger
+	Users *UserOnLine;	
 }
 
 //Comm Config Setting
@@ -51,7 +55,7 @@ func CommSet(pconfig *Config) bool {
 	
 	var log = pconfig.Comm.Log;
 	//lock uniq
-	if comm.LockUniqFile(pconfig.Comm , pconfig.NameSpace , pconfig.ProcId) == false {
+	if comm.LockUniqFile(pconfig.Comm , pconfig.NameSpace , pconfig.ProcId , pconfig.ProcName) == false {
 		log.Err("%s lock uniq file failed!" , _func_);
 		return false;
 	}
@@ -63,6 +67,13 @@ func CommSet(pconfig *Config) bool {
 func SelfSet(pconfig *Config) bool {
 	var _func_ = "<SelfSet>";
 	var log = pconfig.Comm.Log;
+	
+	//users
+	pconfig.Users = new(UserOnLine);
+	if pconfig.Users == nil {
+		log.Err("%s new users failed!" , _func_);
+		return false;
+	}
 	
 	//reg table-map
 	if RegistTableMap(pconfig) == false {
@@ -76,6 +87,10 @@ func SelfSet(pconfig *Config) bool {
 		return false;
 	}
 	
+	//start report serv
+	pconfig.ReportServ = comm.StartReport(pconfig.Comm , pconfig.ProcId , pconfig.ProcName , pconfig.FileConfig.ManageAddr , comm.REPORT_METHOD_ALL);
+    pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_START , time.Now().Unix() , "" , nil);
+	
 	return true;
 }
 
@@ -86,8 +101,13 @@ func ServerExit(pconfig *Config) {
 		pconfig.Comm.Proc.Close();
 	}
 	
+	//close report_serv
+	if pconfig.ReportServ != nil {
+	    pconfig.ReportServ.Close();
+	}
+	
 	//unlock uniq
-	comm.UnlockUniqFile(pconfig.Comm , pconfig.NameSpace , pconfig.ProcId);
+	comm.UnlockUniqFile(pconfig.Comm , pconfig.NameSpace , pconfig.ProcId , pconfig.ProcName);
 	
 	//close log
 	if pconfig.Comm.Log != nil {
@@ -102,7 +122,7 @@ func ServerExit(pconfig *Config) {
 func ServerStart(pconfig *Config) {
 	var log = pconfig.Comm.Log;
 	var default_sleep = time.Duration(comm.DEFAULT_SERVER_SLEEP_IDLE);
-	log.Info("%s starts---%v" , pconfig.FileConfig.ProcName , os.Args);
+	log.Info("%s starts---%v" , pconfig.ProcName , os.Args);
 	
 	//each support routine
 	go comm.HandleSignal(pconfig.Comm);
@@ -148,6 +168,7 @@ func handle_info(pconfig *Config) {
 
 //each ticker
 func handle_tick(pconfig *Config) {
-    SendHeartBeatMsg(pconfig);    	
+    SendHeartBeatMsg(pconfig);
+    ReportSyncServer(pconfig);    	
 }
 

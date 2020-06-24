@@ -6,15 +6,17 @@
   "remote_pass":"****" ,
   
   "procs":[
-    {"name":"conn_serv-1" , "bin":["../conn_serv/conn_serv"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group1/conn_serv/" , "copy_cfg":1 , "cmd":"./conn_serv -N sgame -p 10001 -f conf/conn_serv.json"},
-	{"name":"logic_serv-1" , "bin":["../logic_serv/logic_serv" , "../logic_serv/table" , "../logic_serv/table_desc"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group1/logic_serv/" , "copy_cfg":1 , "cmd":"./logic_serv -N sgame -p 20001 -f conf/logic_serv.json"},        
-    {"name":"db_serv-1" ,   "bin":["../db_serv/db_serv"] , "host":"" , "host_dir":"/home/nmsoccer/sg/db/db_serv1/" , "copy_cfg":1 , "cmd":"./db_serv -N sgame -p 30001 -f conf/db_serv.json"}    	
+    {"name":"conn_serv-1" , "bin":["../conn_serv/conn_serv"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group1/conn_serv/" , "copy_cfg":1 , "cmd":"./conn_serv -N sgame -p 10001 -P conn_serv-1 -f conf/conn_serv.json"},
+	{"name":"logic_serv-1" , "bin":["../logic_serv/logic_serv" , "../logic_serv/table" , "../logic_serv/table_desc"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group1/logic_serv/" , "copy_cfg":1 , "cmd":"./logic_serv -N sgame -p 20001 -P logic_serv-1 -f conf/logic_serv.json"},        
+    {"name":"db_serv-1" ,   "bin":["../db_serv/db_serv"] , "host":"" , "host_dir":"/home/nmsoccer/sg/db/db_serv1/" , "copy_cfg":1 , "cmd":"./db_serv -N sgame -p 30001 -P db_serv-1 -f conf/db_serv.json"},
+    {"name":"manage_serv-1" , "bin":["../manage_serv/manage_serv" , "../manage_serv/html_tmpl/"] , "host":"" , "host_dir":"/home/nmsoccer/sg/manage/manage_serv-1/" , "copy_cfg":1 , "cmd":"./manage_serv -N sgame -P manage_serv-1 -f conf/manage_serv.json"}	
   ],
 
   "proc_cfgs":[
-    {"name":"conn_serv-1" ,  "cfg_name":"conf/conn_serv.json" , "cfg_tmpl":"./tmpl/conn_serv.tmpl" , "tmpl_param":"proc_name=conn_serv-1,logic_serv=20001,listen_addr=:18909"},    
-    {"name":"logic_serv-1" , "cfg_name":"conf/logic_serv.json" , "cfg_tmpl":"./tmpl/logic_serv.tmpl" , "tmpl_param":"proc_name=logic_serv-1,conn_serv=10001,master_db=30001,slave_db=0"},	
-	{"name":"db_serv-1" ,    "cfg_name":"conf/db_serv.json" ,    "cfg_tmpl":"./tmpl/db_serv.tmpl" , "tmpl_param":"proc_name=db_serv-1,logic_serv_start=20001,logic_serv_end=20001,redis_addr=127.0.0.1:6698"}	
+    {"name":"conn_serv-1" ,  "cfg_name":"conf/conn_serv.json" , "cfg_tmpl":"./tmpl/conn_serv.tmpl" , "tmpl_param":"logic_serv=20001,listen_addr=:18909"},    
+    {"name":"logic_serv-1" , "cfg_name":"conf/logic_serv.json" , "cfg_tmpl":"./tmpl/logic_serv.tmpl" , "tmpl_param":"conn_serv=10001,master_db=30001,slave_db=0"},	
+	{"name":"db_serv-1" ,    "cfg_name":"conf/db_serv.json" ,    "cfg_tmpl":"./tmpl/db_serv.tmpl" , "tmpl_param":"logic_serv_start=20001,logic_serv_end=20001,redis_addr=127.0.0.1:6698"},	
+    {"name":"manage_serv-1" ,  "cfg_name":"conf/manage_serv.json" , "cfg_tmpl":"./tmpl/manage_serv.tmpl" , "tmpl_param":"listen_addr=:7000,http_addr=:8080"}
   ]
    
 }

@@ -49,13 +49,15 @@ func InitCommConfig(log_file string , name_space string , proc_id int) *CommConf
     pconfig.Log = lp;
     
     //open bridge
-    p := proc.Open(name_space , proc_id);
-    if p == nil {
-    	lp.Err("open bridge <%s:%d> failed!" , name_space , proc_id);
-    	return nil;
+    if proc_id>0 {
+        p := proc.Open(name_space , proc_id);
+        if p == nil {
+    	    lp.Err("open bridge <%s:%d> failed!" , name_space , proc_id);
+    	    return nil;
+        }
+        pconfig.Proc = p;
+        lp.Info("open proc bridge <%s:%d> success!" , name_space , proc_id);
     }
-    pconfig.Proc = p;
-    lp.Info("open proc bridge <%s:%d> success!" , name_space , proc_id);
 	
 		
 	//signal

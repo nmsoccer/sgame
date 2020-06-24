@@ -9,7 +9,7 @@ import(
 
 
 type FileConfig struct {
-	ProcName string `json:"proc_name"`
+//	ProcName string `json:"proc_name"`
 	LogicServs []int `json:"logic_servs"` //logic serv set
 	LogFile string `json:"log_file"`
 	RedisOpen int `json:"redis_open"`
@@ -17,16 +17,19 @@ type FileConfig struct {
 	MaxConn int `json:"max_conn"` //max redis-conn of process
 	NormalConn int `json:"normal_conn"` //normal redis-conn
 	AuthPass string `json:"auth_pass"`
+	ManageAddr []string `json:"manage_addr"`
 }
 
 
 type Config struct {
 	NameSpace string
 	ProcId int
+	ProcName string
     ConfigFile string
 	FileConfig *FileConfig    
 	Comm *comm.CommConfig;
 	RedisClient *comm.RedisClient;	
+	ReportServ *comm.ReportServ; //report to manger
 }
 
 //Comm Config Setting
@@ -52,7 +55,7 @@ func CommSet(pconfig *Config) bool {
 	pconfig.Comm = comm.InitCommConfig(pconfig.FileConfig.LogFile , pconfig.NameSpace , pconfig.ProcId);
 	
 	//lock uniq
-	if comm.LockUniqFile(pconfig.Comm , pconfig.NameSpace , pconfig.ProcId) == false {
+	if comm.LockUniqFile(pconfig.Comm , pconfig.NameSpace , pconfig.ProcId , pconfig.ProcName) == false {
 		pconfig.Comm.Log.Err("%s lock uniq file failed!" , _func_);
 		return false;
 	}	
@@ -74,6 +77,9 @@ func SelfSet(pconfig *Config) bool {
 	    pconfig.RedisClient = pclient;
 	}
 	
+	//start report serv
+	pconfig.ReportServ = comm.StartReport(pconfig.Comm , pconfig.ProcId , pconfig.ProcName , pconfig.FileConfig.ManageAddr , comm.REPORT_METHOD_ALL);
+    pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_START , time.Now().Unix() , "" , nil);
 	 
 	return true;
 }
@@ -87,11 +93,18 @@ func ServerExit(pconfig *Config) {
 	}
 	
 	//close redis
-	pconfig.RedisClient.Close(pconfig.Comm);
-	time.Sleep(time.Second);
+	if pconfig.RedisClient != nil {
+	    pconfig.RedisClient.Close(pconfig.Comm);
+	    time.Sleep(time.Second);
+	}
+	
+	//close report_serv
+	if pconfig.ReportServ != nil {
+	    pconfig.ReportServ.Close();
+	}
 	
 	//unlock uniq
-	comm.UnlockUniqFile(pconfig.Comm , pconfig.NameSpace , pconfig.ProcId);
+	comm.UnlockUniqFile(pconfig.Comm , pconfig.NameSpace , pconfig.ProcId , pconfig.ProcName);
 	
 	//close log
 	if pconfig.Comm.Log != nil {
@@ -106,7 +119,7 @@ func ServerExit(pconfig *Config) {
 func ServerStart(pconfig *Config) {
 	var log = pconfig.Comm.Log;
 	var default_sleep = time.Duration(comm.DEFAULT_SERVER_SLEEP_IDLE);
-	log.Info("%s starts---%v" , pconfig.FileConfig.ProcName , os.Args);
+	log.Info("%s starts---%v" , pconfig.ProcName , os.Args);
 	
 	//each support routine
 	go comm.HandleSignal(pconfig.Comm);
@@ -151,5 +164,6 @@ func handle_info(pconfig *Config) {
 //each ticker
 func handle_tick(pconfig *Config) {
     SendHeartBeatMsg(pconfig);
-    HeartBeatToRedis(pconfig);    	
+    HeartBeatToRedis(pconfig);
+    ReportSyncServer(pconfig);    	
 }

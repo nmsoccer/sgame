@@ -9,8 +9,10 @@ import (
 
 var last_send int64;
 var last_hb_redis int64;
+var last_sync int64;
 const (
     heart_beat_circle = 10;
+    sync_server_circle = 60;
 )
 
 func SendHeartBeatMsg(pconfig *Config) {
@@ -49,6 +51,9 @@ func SendHeartBeatMsg(pconfig *Config) {
 	    lp.Err("send msg to %d failed! err:%d" , pconfig.FileConfig.LogicServs[0] , ret);
     }
     
+    //report
+    pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_HEART , curr_ts , "" , nil);
+    pconfig.ReportServ.Report(comm.REPORT_PROTO_CONN_NUM , int64(pconfig.RedisClient.GetConnNum()) , "RedisConn" , nil);
 	return;
 }
 
@@ -58,9 +63,9 @@ func RecvHeartBeatReq(pconfig *Config , preq *ss.MsgHeartBeatReq , from int) {
 	var log = pconfig.Comm.Log;
 	var stats = pconfig.Comm.PeerStats;
 	
-	last , ok := stats[from];
+	_ , ok := stats[from];
 	if ok {
-	    log.Debug("%s update heartbeat server:%d %v --> %v" , _func_ , from , last , preq.GetTs());	
+	    //log.Debug("%s update heartbeat server:%d %v --> %v" , _func_ , from , last , preq.GetTs());	
 	} else {
 		log.Debug("%s set  heartbeat server:%d %v" , _func_ , from , preq.GetTs());	
 	}
@@ -79,10 +84,10 @@ func cb_heartbeat_redis(pconfig *comm.CommConfig , result interface{} , cb_arg [
 		return;
 	}
 	
-	//get arg
-	ts , ok := cb_arg[0].(int64);
+	//get arg	
+	_ , ok := cb_arg[0].(int64);
 	if ok {
-	    log.Debug("%s done! result:%v ts:%d" , _func_ , ret , ts);
+	    //log.Debug("%s done! result:%v ts:%d" , _func_ , ret , ts);
 	}	
 }
 
@@ -108,4 +113,17 @@ func HeartBeatToRedis(pconfig *Config) {
 	}
 }
 
-
+func ReportSyncServer(pconfig *Config) {
+    curr_ts := time.Now().Unix();
+    if last_sync+sync_server_circle >= curr_ts {
+    	return;
+    }
+    last_sync = curr_ts;
+	
+	//msg
+	pmsg := new(comm.SyncServerMsg);
+	pmsg.StartTime = pconfig.Comm.StartTs;
+	
+	//send
+	pconfig.ReportServ.Report(comm.REPORT_PROTO_SYNC_SERVER , 0 , "" , pmsg);
+}

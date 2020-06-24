@@ -14,7 +14,7 @@ const (
 
 
 //uniq process lock file
-func LockUniqFile(pconfig *CommConfig , name_space string , proc_id int) bool{
+func LockUniqFile(pconfig *CommConfig , name_space string , proc_id int , proc_name string) bool{
 	var _func_ = "<LockFile>";
     var target_dir	= TEMP_DIR_PREFIX + "/" + name_space;
     var log = pconfig.Log;
@@ -27,7 +27,7 @@ func LockUniqFile(pconfig *CommConfig , name_space string , proc_id int) bool{
     }
     
     //open file
-    var tmp_file = target_dir + "/" + name_space + "_" + strconv.Itoa(proc_id) + ".pid";
+    var tmp_file = target_dir + "/" + proc_name + "_" + strconv.Itoa(proc_id) + ".pid";
     file , err := os.OpenFile(tmp_file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0744);
     if err != nil {
     	log.Err("%s create tmp file:%s failed! err:%v\n", _func_ , tmp_file , err);
@@ -61,10 +61,10 @@ func LockUniqFile(pconfig *CommConfig , name_space string , proc_id int) bool{
 }
 
 //unlock
-func UnlockUniqFile(pconfig *CommConfig , name_space string , proc_id int) bool {
+func UnlockUniqFile(pconfig *CommConfig , name_space string , proc_id int , proc_name string) bool {
 	var _func_ = "<UnlockUniqFile>";
 	var target_dir	= TEMP_DIR_PREFIX + "/" + name_space;
-	var tmp_file = target_dir + "/" + name_space + "_" + strconv.Itoa(proc_id) + ".pid";
+	var tmp_file = target_dir + "/" + proc_name + "_" + strconv.Itoa(proc_id) + ".pid";
 	var log = pconfig.Log;
 	
 	//open

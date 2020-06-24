@@ -1,6 +1,7 @@
 syntax="proto3";
 package ss;
 
+import "user_info.proto";
 /*
 Server-Server Proto
 */
@@ -11,7 +12,15 @@ enum SS_PROTO_TYPE {
   HEART_BEAT_RSP = 1;
   PING_REQ = 2;
   PING_RSP = 3;
+  LOGIN_REQ = 4;
+  LOGIN_RSP = 5;
 }
+
+enum SS_COMMON_RESULT {
+  SUCCESS = 0;
+  FAILED = 1;
+}
+
 
 //main msg
 message SSMsg {
@@ -27,11 +36,13 @@ message SSMsg {
 
 
 
-//sub msg
+/***sub msg***/
+//heartbeat
 message MsgHeartBeatReq {
   int64 ts = 1;
 }
 
+//ping
 message MsgPingReq {
   int64 ts = 1;
   int64 client_key = 2;
@@ -43,13 +54,24 @@ message MsgPingRsp {
 }
 
 
+//login
+message MsgLoginReq { 
+  int64 c_key = 20;
+  string name = 21;
+  string pass=22;
+  string device=23;
+}
 
-message MsgLoginReq {
-  int64 uid = 1;
-  string name = 2;
+enum USER_LOGIN_RET {
+  LOGIN_SUCCESS = 0;
+  LOGIN_EMPTY = 1;
+  LOGIN_PASS = 2;
+  LOGIN_ERR = 3;
 }
 
 message MsgLoginRsp {
-  int64 uid = 1;
-  bool  result = 2;
+  USER_LOGIN_RET result=1;
+  int64 c_key=2;
+  string name=3;
+  UserInfo user_info=20;
 }

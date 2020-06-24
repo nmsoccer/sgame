@@ -1,0 +1,14 @@
+<html>
+<head>
+<title>
+detail
+</title>
+</head>
+<body>
+<h3>{{.ProcName}}</h3>
+{{ with .Stat }}
+Start: {{ if (le .StartTime.Unix 0) }} {{ print 0 }} {{ else }} {{ .StartTime.Format "2006-01-02 15:04:05" }} {{ end }} <br/>
+Heart: {{ if (le .HeartBeat.Unix 0) }} {{ print 0 }} {{ else }} {{ .HeartBeat.Format "2006-01-02 15:04:05" }} {{ end }}
+{{ end }}
+</body>
+</html>

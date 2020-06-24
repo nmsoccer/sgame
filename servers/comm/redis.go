@@ -1,7 +1,7 @@
 package comm
 
 import (
-	"goredis/redigo-master/redis"
+	"github.com/gomodule/redigo/redis"
 	"time"
 	"sync"
 )
@@ -15,7 +15,7 @@ const (
 var last_check int64;
 const (
     check_conn_circle = 5;
-    block_queue_len = (1024*1024); //unlimited ...
+    block_queue_len = (100000); //max block go-routine ...
 )
 
 type RedisClient struct {
@@ -61,6 +61,17 @@ func Conv2Values(result interface{}) ([]interface{} , error) {
 func Conv2Strings(result interface{}) ([]string , error) {
 	return redis.Strings(result, nil);
 }
+func Conv2StringMap(result interface {}) (map[string]string , error) {
+	return redis.StringMap(result, nil);
+}
+func Conv2IntMap(result interface {}) (map[string]int , error) {
+	return redis.IntMap(result, nil);
+}
+func Conv2Int64Map(result interface {}) (map[string]int64 , error) {
+	return redis.Int64Map(result, nil);
+}
+
+
 
 //New RedisClient
 func NewRedisClient(pconfig *CommConfig , redis_addr string , auth string , max_conn,normal_conn int) *RedisClient{
@@ -87,6 +98,14 @@ func NewRedisClient(pconfig *CommConfig , redis_addr string , auth string , max_
 
 //redis exe cmd
 func (pclient *RedisClient) RedisExeCmd(pconfig *CommConfig , cb_func RedisCallBack , cb_arg []interface{} , cmd string , arg ...interface{}) {
+	//check blocked queue
+	len_block := len(pclient.block_queue);
+	if  len_block >= cap(pclient.block_queue) {
+		pconfig.Log.Err("RedisExeCmd failed! block routine too may! please check system! %d" , len_block);
+		return;
+	}
+	
+	
 	//start a routine
 	go func() {
 		var _func_ = "<RedisExeCmd>";
@@ -94,10 +113,10 @@ func (pclient *RedisClient) RedisExeCmd(pconfig *CommConfig , cb_func RedisCallB
 		
 		//throw block
 		pclient.block_queue <- 1;
-		log.Debug("%s block:%d" , _func_ , len(pclient.block_queue));
+		//log.Debug("%s block:%d" , _func_ , len(pclient.block_queue));
 		//occupy connection
 		idx := <- pclient.idle_queue;
-		log.Debug("%s get idle idx:%d remain:%d " , _func_ , idx , len(pclient.idle_queue));
+		//log.Debug("%s get idle idx:%d remain:%d " , _func_ , idx , len(pclient.idle_queue));
 				
 		//exe cmd
 		conn := pclient.conns[idx];
@@ -124,6 +143,11 @@ func (pclient *RedisClient) RedisExeCmd(pconfig *CommConfig , cb_func RedisCallB
 func (pclient *RedisClient) Close(pconfig *CommConfig) {
 	close_redis_conn(pclient, pconfig, nil);
 }
+
+func (pclient *RedisClient) GetConnNum() int {
+	return pclient.conn_count;
+}
+
 
 /*--------------------------Static Func----------------------------*/
 //init redis_conn

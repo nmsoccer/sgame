@@ -3,7 +3,6 @@ package lib
 import (
     "sgame/proto/ss"
     "sgame/proto/cs"
-    "sgame/servers/comm"    
 )
 
 
@@ -31,41 +30,28 @@ func SendPingReq(pconfig *Config , client_key int64 , pmsg *cs.CSPingReq) {
 	}
 	
 	//send msg	
-    ret := pconfig.Comm.Proc.Send(pconfig.FileConfig.LogicServ, buff , len(buff));
-    if ret < 0 {
-	    log.Err("%s send msg to %d failed! err:%d" , _func_ , pconfig.FileConfig.LogicServ , ret);
+    //ret := pconfig.Comm.Proc.Send(pconfig.FileConfig.LogicServ, buff , len(buff));
+    ok := SendToLogic(pconfig, buff);
+    if !ok {
+	    log.Err("%s send msg  failed!" , _func_);
     }
-    log.Debug("%s send to %d success! client_key:%v ts:%v" , _func_ , pconfig.FileConfig.LogicServ , client_key , pmsg.TimeStamp);        
+    log.Debug("%s send success! client_key:%v ts:%v" , _func_  , client_key , pmsg.TimeStamp);        
 	return;
 }
 
 
-func RecvPingRspMsg(pconfig *Config , pmsg *ss.MsgPingRsp) {
-	var _func_ = "<RecvPingRspMsg>";
+func RecvPingRsp(pconfig *Config , pmsg *ss.MsgPingRsp) {
+	var _func_ = "<RecvPingRsp>";
 	log := pconfig.Comm.Log;	
 	log.Debug("%s client:%v ts:%v" , _func_ , pmsg.ClientKey , pmsg.Ts);
 		
-	  //pack
+	//gmsg
 	var gmsg cs.GeneralMsg;
 	gmsg.ProtoId = cs.CS_PROTO_PING_RSP;
 	psub := new(cs.CSPingRsp);
 	psub.TimeStamp = pmsg.Ts;
 	gmsg.SubMsg = psub;
 	
-	  //encode	  
-	enc_data , err := cs.EncodeMsg(&gmsg);
-	if err != nil {
-		log.Err("%s encode msg failed! key:%v err:%v" , _func_ , pmsg.ClientKey , err);
-		return;
-	}
-	
-	//To Client
-	pclient := new(comm.ClientPkg);
-	pclient.ClientKey = pmsg.ClientKey;
-	pclient.Data = enc_data;
-	
-	//Send
-	ret := pconfig.TcpServ.Send(pconfig.Comm , pclient);
-	log.Debug("%s send to client ret:%d data:%v" , _func_ , ret , pclient.Data);
-	return;
+	//send
+	SendToClient(pconfig, pmsg.ClientKey , &gmsg);	
 }

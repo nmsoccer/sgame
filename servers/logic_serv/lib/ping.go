@@ -27,10 +27,9 @@ func RecvPingReq(pconfig *Config , preq *ss.MsgPingReq , from int) {
 	}
 	
 	//sendback
-	proc := pconfig.Comm.Proc;
-	ret := proc.Send(from , buff , len(buff));
-	if ret < 0 {
-		log.Err("%s send back failed! ret:%d key:%v" , _func_ , ret , preq.ClientKey);
+	ok := SendToConnect(pconfig, buff);
+	if !ok {
+		log.Err("%s send back failed! key:%v" , _func_ , preq.ClientKey);
 		return;
 	}
 	log.Debug("%s send back success! key:%v" , _func_ , preq.ClientKey);

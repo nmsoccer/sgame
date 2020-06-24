@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DIR=("conn_serv" "db_serv" "logic_serv")
+DIR=("conn_serv" "db_serv" "logic_serv" "manage_serv")
 cd ..
 WORKING=`pwd`
 
@@ -10,6 +10,7 @@ function build()
   do
     #compile
     cd $dir
+    rm $dir #remove old
     dst=$dir
     src=$dir.go
     go build $src
@@ -18,6 +19,7 @@ function build()
     if [[ ! -e  $dst ]]
     then
       echo "build $dst failed!"
+      exit 0
     else
       echo "compile $dst success"
       ls -l $dst

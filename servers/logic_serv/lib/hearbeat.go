@@ -3,11 +3,14 @@ package lib
 import (
     "sgame/proto/ss"
     "time"
+    "sgame/servers/comm"
 )
 
 var last_send int64;
+var last_sync int64;
 const (
     heart_beat_circle = 10;
+    sync_server_circle = 60;
 )
 
 func SendHeartBeatMsg(pconfig *Config) {
@@ -51,6 +54,9 @@ func SendHeartBeatMsg(pconfig *Config) {
 	    lp.Err("send msg to %d failed! err:%d" , pconfig.FileConfig.MasterDb , ret);
     }
     
+    //report
+    pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_HEART , curr_ts , "" , nil);
+    pconfig.ReportServ.Report(comm.REPORT_PROTO_CONN_NUM , int64(pconfig.Users.curr_online) , "OnLine" , nil);
 	return;
 }
 
@@ -68,4 +74,17 @@ func RecvHeartBeatReq(pconfig *Config , preq *ss.MsgHeartBeatReq , from int) {
 	stats[from] = preq.GetTs();
 }
 
-
+func ReportSyncServer(pconfig *Config) {
+    curr_ts := time.Now().Unix();
+    if last_sync+sync_server_circle >= curr_ts {
+    	return;
+    }
+    last_sync = curr_ts;
+	
+	//msg
+	pmsg := new(comm.SyncServerMsg);
+	pmsg.StartTime = pconfig.Comm.StartTs;
+	
+	//send
+	pconfig.ReportServ.Report(comm.REPORT_PROTO_SYNC_SERVER , 0 , "" , pmsg);
+}

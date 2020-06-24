@@ -7,13 +7,19 @@ import(
     "fmt"
 )
 
+type WatchClient struct{
+	ProcId int
+	ProcName string
+	Stat PeerStat	
+}
+
 type FileConfig struct {
-	//ProcName string `json:"proc_name"`
-	LogicServ int `json:"logic_serv"`
+	ListenAddr string `json:"listen_addr"`  //listen report
+	HttpAddr string `json:"http_addr"` //listen http request
 	LogFile string `json:"log_file"`
-	MaxConn int `json:"max_conn"`
-	ListenAddr string `json:"listen_addr"`
-	ManageAddr []string `json:"manage_addr"`
+	ClientList []interface{} `json:"client_list"`
+	HeartTimeout int `json:"heart_timeout"`
+	ReloadTimeout int `json:"reload_timeout"`
 }
 
 
@@ -24,10 +30,9 @@ type Config struct {
 	ConfigFile string
 	FileConfig *FileConfig
 	Comm *comm.CommConfig;
-	TcpServ *comm.TcpServ;
-	Ckey2Uid map[int64]int64; //client key to uid
-	Uid2Ckey map[int64]int64; //uid to client key
-	ReportServ *comm.ReportServ; //report to manger
+	WatchMap map[int]*WatchClient;
+	Recver *ReportRecver;
+	Panel *PanelServ;	
 }
 
 //Comm Config Setting
@@ -66,21 +71,29 @@ func SelfSet(pconfig *Config) bool {
 	var _func_ = "<SelfSet>";
 	log := pconfig.Comm.Log;
 	
-	//start tcp serv to listen clients
-	pserv := comm.StartTcpServ(pconfig.Comm , pconfig.FileConfig.ListenAddr  , pconfig.FileConfig.MaxConn);
-	if pserv == nil {
-	    log.Err("%s fail! start_tcp_serv at %s failed!" , _func_ , pconfig.FileConfig.ListenAddr);
-	    return false;	
-	}
-	pconfig.TcpServ = pserv;
-		
-	//init some map
-	pconfig.Ckey2Uid = make(map[int64]int64);
-	pconfig.Uid2Ckey = make(map[int64]int64);
+	//parse client
+	if !ParseClientList(pconfig) {
+		log.Err("%s parse client list failed!" , _func_);
+		return false;
+	} 
 	
-	//start report serv
-	pconfig.ReportServ = comm.StartReport(pconfig.Comm , pconfig.ProcId , pconfig.ProcName , pconfig.FileConfig.ManageAddr , comm.REPORT_METHOD_ALL);
-    pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_START , time.Now().Unix() , "" , nil);
+	//start recver
+	pconfig.Recver = StartRecver(pconfig);
+	if pconfig.Recver == nil {
+		log.Err("%s failed! start recver fail!" , _func_);
+		return false;
+	}
+	
+	//start panelserv
+	pconfig.Panel = StartPanel(pconfig);
+	if pconfig.Panel == nil {
+		log.Err("%s failed! start panel fail!" , _func_);
+		return false;
+	}
+	
+	
+	//start tcp serv to listen clients
+    log.Info("%s done" , _func_);
 	
 	return true;
 }
@@ -91,16 +104,11 @@ func ServerExit(pconfig *Config) {
 		pconfig.Comm.Proc.Close();
 	}
 	
-	//close tcp_serv
-	if pconfig.TcpServ != nil {
-	    pconfig.TcpServ.Close(pconfig.Comm);
+	//close recver
+	if pconfig.Recver != nil {
+		pconfig.Recver.Close();
 	}
-	
-	//close report_serv
-	if pconfig.ReportServ != nil {
-	    pconfig.ReportServ.Close();
-	}
-	
+		
 	//unlock uniq
 	comm.UnlockUniqFile(pconfig.Comm , pconfig.NameSpace , pconfig.ProcId , pconfig.ProcName);
 	
@@ -129,13 +137,11 @@ func ServerStart(pconfig *Config) {
 		handle_info(pconfig);
 		
 		//recv pkg
-		RecvMsg(pconfig);
+		//RecvMsg(pconfig);
 		
 		//tick
 		handle_tick(pconfig);
 		
-		//read client
-		ReadClients(pconfig);
 		
 		//sleep		
 		time.Sleep(time.Millisecond * default_sleep);     
@@ -145,8 +151,7 @@ func ServerStart(pconfig *Config) {
 /*----------------Static Func--------------------*/
 //each ticker
 func handle_tick(pconfig *Config) {
-    SendHeartBeatMsg(pconfig);
-    ReportSyncServer(pconfig);    	
+    //SendHeartBeatMsg(pconfig);    	
 }
 
 func handle_info(pconfig *Config) {

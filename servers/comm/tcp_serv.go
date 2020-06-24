@@ -187,6 +187,9 @@ func (pserv *TcpServ) Send(pconfig *CommConfig , ppkg *ClientPkg) int{
 	return 0;
 }
 
+func (pserv *TcpServ) GetConnNum() int {
+	return pserv.curr_conn;
+}
 
 
 /*--------------------------Static Func----------------------------*/

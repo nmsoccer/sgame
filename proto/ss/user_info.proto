@@ -1,0 +1,15 @@
+syntax="proto3";
+package ss;
+
+message UserBasic { 
+  string name=20;
+  int64 uid=21;
+  string addr=22;
+  bool sex=23;
+  int32 age=24;
+}
+
+
+message UserInfo {
+  UserBasic basic_info=20;
+}

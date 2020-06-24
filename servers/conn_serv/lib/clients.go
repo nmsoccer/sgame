@@ -45,7 +45,7 @@ func HandleClientPkg(pconfig *Config , pclient *comm.ClientPkg) {
 	}
 	
 	proto_id := gmsg.ProtoId;
-	var ok bool;
+	var conv_err = true;
 	//convert
 	switch proto_id {
 		case cs.CS_PROTO_PING_REQ:
@@ -53,12 +53,14 @@ func HandleClientPkg(pconfig *Config , pclient *comm.ClientPkg) {
 		    if ok {
 		        log.Debug("%s recv proto:%d success! v:%v" , _func_ , proto_id , *pmsg);
 		        SendPingReq(pconfig, pclient.ClientKey , pmsg);
+		        conv_err = false;
 		    }
 		case cs.CS_PROTO_LOGIN_REQ:
 		    pmsg , ok := gmsg.SubMsg.(*cs.CSLoginReq);
 		    if ok {
 		    	log.Debug("%s recv proto:%d success! v:%v" , _func_ , proto_id , *pmsg);
 		    	SendLoginReq(pconfig, pclient.ClientKey , pmsg);
+		    	conv_err = false;
 		    }  
 		default:
 		    log.Err("%s illegal proto:%d" , _func_ , proto_id);
@@ -66,7 +68,29 @@ func HandleClientPkg(pconfig *Config , pclient *comm.ClientPkg) {
 	}
 	
 	//log
-	if !ok {
+	if conv_err {
 	    log.Err("%s conv proto:%d failed!" , _func_ , proto_id);
 	}			
 } 
+
+func SendToClient(pconfig *Config , client_key int64 , gmsg *cs.GeneralMsg) bool{
+	var _func_ = "<SendToClient>";
+	log := pconfig.Comm.Log;
+	
+	//enc msg
+	enc_data , err := cs.EncodeMsg(gmsg);
+	if err != nil {
+		log.Err("%s encode msg failed! key:%v err:%v" , _func_ , client_key , err);
+		return false;
+	}
+	
+	//make pkg
+	pclient := new(comm.ClientPkg);
+	pclient.ClientKey = client_key;
+	pclient.Data = enc_data;
+	
+	//Send
+	ret := pconfig.TcpServ.Send(pconfig.Comm , pclient);
+	log.Debug("%s send to client ret:%d data:%v" , _func_ , ret , pclient.Data);
+	return true;	
+}

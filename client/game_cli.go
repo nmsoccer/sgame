@@ -74,12 +74,21 @@ func RecvPkg(conn *net.TCPConn) {
 		//switch rsp
 		switch gmsg.ProtoId {
 			case cs.CS_PROTO_PING_RSP:
-			  prsp , ok := gmsg.SubMsg.(*cs.CSPingRsp);
-			  if ok {
-			    curr_ts := time.Now().UnixNano()/1000;	
-			    fmt.Printf("ping:%v ms\n", (curr_ts-prsp.TimeStamp)/1000);
-			  }
-			  return;
+			    prsp , ok := gmsg.SubMsg.(*cs.CSPingRsp);
+			    if ok {
+			        curr_ts := time.Now().UnixNano()/1000;	
+			        fmt.Printf("ping:%v ms\n", (curr_ts-prsp.TimeStamp)/1000);
+			    }
+			    return;
+			case cs.CS_PROTO_LOGIN_RSP:
+			    prsp , ok := gmsg.SubMsg.(*cs.CSLoginRsp);
+			    if ok {
+			    	fmt.Printf("login result:%d name:%s\n", prsp.Result , prsp.Name);
+			    	if prsp.Result == 0 {
+			    		fmt.Printf("uid:%v sex:%d addr:%s\n", prsp.Basic.Uid , prsp.Basic.Sex , prsp.Basic.Addr);
+			    	}
+			    }
+			    return;  
 			default:
 			  fmt.Printf("illegal proto:%d\n", gmsg.ProtoId);
 		}
@@ -109,7 +118,7 @@ func SendPkg(conn *net.TCPConn , cmd string) {
 	        psub := new(cs.CSLoginReq);
 	        psub.Name = "cs";
 	        psub.Device = "onepluse9";
-	        psub.Pass = "123";
+	        psub.Pass = "17908";
 	        gmsg.SubMsg = psub;    
 	    default:
 	        fmt.Printf("illegal cmd:%s\n", cmd);    

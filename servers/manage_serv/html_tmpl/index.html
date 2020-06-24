@@ -1,0 +1,19 @@
+<html>
+<head>
+</head>
+<title>
+index
+</title>
+<h2>Servers</h2>
+{{ range $proc_id , $watch := . }}
+{{ with $watch }}
+<a href="./detail?proc={{ $proc_id }}">{{ .ProcName }}</a> <br/>
+{{ with .Stat}}
+Start: {{ if (le .StartTime.Unix 0) }} <font color="red">{{ 0 }}</font> {{ else }} <font color="green">{{ .StartTime.Format "2006-01-02 15:04:05" }}</font> {{ end }} 
+Heart: {{ if (le .HeartBeat.Unix 0) }} <font color="red">{{ 0 }}</font> {{ else }} <font color="green">{{ .HeartBeat.Format "2006-01-02 15:04:05" }}</font> {{ end }}
+{{ if (ne .ConnStr "") }} {{ .ConnStr }}: <font color="green">{{ .ConnNum }}</font> {{ end }}
+<br/>
+{{ end}}
+{{ end}}
+{{ end }}
+</html>
