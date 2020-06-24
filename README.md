@@ -10,4 +10,7 @@ A Simple Game Framework  一个简单的游戏框架
 * **未完待续**
 
 
+### 进程监控
+框架提供了一套简单的进程监控和可视化管理机制，包括了上报协议及管理进程，这里是个简单的页面展示
+![管理页面](https://github.com/nmsoccer/sgame/blob/master/pic/manage.png)
 ### to be continue
