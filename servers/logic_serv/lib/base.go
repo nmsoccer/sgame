@@ -27,7 +27,7 @@ type Config struct {
 	Comm *comm.CommConfig;
 	TableMap comm.TableMap;
 	ReportServ *comm.ReportServ; //report to manger
-	Users *UserOnLine;	
+	Users *OnLineList;
 }
 
 //Comm Config Setting
@@ -59,7 +59,7 @@ func CommSet(pconfig *Config) bool {
 		log.Err("%s lock uniq file failed!" , _func_);
 		return false;
 	}
-					
+
 	return true;
 }
 
@@ -67,13 +67,18 @@ func CommSet(pconfig *Config) bool {
 func SelfSet(pconfig *Config) bool {
 	var _func_ = "<SelfSet>";
 	var log = pconfig.Comm.Log;
-	
+
+	//add ticker
+	pconfig.Comm.TickPool.AddTicker("heart_beat" , comm.TICKER_TYPE_CIRCLE , 0 , comm.PERIOD_HEART_BEAT_DEFAULT , SendHeartBeatMsg , pconfig);
+    pconfig.Comm.TickPool.AddTicker("report_sync" , comm.TICKER_TYPE_CIRCLE , 0 , comm.PERIOD_REPORT_SYNC_DEFAULT , ReportSyncServer , pconfig);
+
 	//users
-	pconfig.Users = new(UserOnLine);
+	pconfig.Users = new(OnLineList);
 	if pconfig.Users == nil {
 		log.Err("%s new users failed!" , _func_);
 		return false;
 	}
+	pconfig.Users.user_map = make(map[int64] *UserOnLine);
 	
 	//reg table-map
 	if RegistTableMap(pconfig) == false {
@@ -103,6 +108,8 @@ func ServerExit(pconfig *Config) {
 	
 	//close report_serv
 	if pconfig.ReportServ != nil {
+		pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_STOP , time.Now().Unix() , "" , nil);
+		time.Sleep(time.Second);
 	    pconfig.ReportServ.Close();
 	}
 	
@@ -168,7 +175,6 @@ func handle_info(pconfig *Config) {
 
 //each ticker
 func handle_tick(pconfig *Config) {
-    SendHeartBeatMsg(pconfig);
-    ReportSyncServer(pconfig);    	
+    pconfig.Comm.TickPool.Tick(0);
 }
 

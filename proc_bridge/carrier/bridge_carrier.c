@@ -94,6 +94,7 @@ static int check_run_statistics(void *arg);
 static int check_signal_stat(void *arg);
 static int check_hash(void *arg);
 static int check_snd_buff_memory(void *arg);
+static int check_tmp_file(void *arg);
 static int recv_client_pkg(carrier_env_t *penv , client_info_t *pclient , bridge_package_t *pkg);
 static int expand_recv_buff(carrier_env_t *penv , client_info_t *pclient);
 static int flush_recving_buff(carrier_env_t *penv , client_info_t *pclient);
@@ -236,7 +237,9 @@ int main(int argc , char **argv)
 	slog_log(slogd , SL_INFO , "name_space:%s proc_id:%d , proc_port:%d , cfg_file:%s" , penv->name_space , penv->proc_id , proc_port , penv->cfg_file_name);
 
 	//锁文件
-	snprintf(penv->lock_file_name , sizeof(penv->lock_file_name) , PROC_BRIDGE_HIDDEN_DIR_FORMAT"/carrier.%d.lock" ,  penv->name_space ,
+	//snprintf(penv->lock_file_name , sizeof(penv->lock_file_name) , PROC_BRIDGE_HIDDEN_DIR_FORMAT"/carrier.%d.lock" ,  penv->name_space ,
+	//		penv->proc_id);
+	snprintf(penv->lock_file_name , sizeof(penv->lock_file_name) , PROC_BRIDGE_HIDDEN_DIR_FORMAT"/"PROC_BRIDGE_HIDDEN_PID_FILE ,  penv->name_space ,
 			penv->proc_id);
 	lock_file_fd = open(penv->lock_file_name , O_RDWR|O_CREAT , 0644);
 	if(lock_file_fd < 0)
@@ -261,6 +264,7 @@ int main(int argc , char **argv)
 		}
 		return 0;
 	}
+	penv->lock_file_fd = lock_file_fd;
 
 	/*守护进程*/
 	demon_proc();
@@ -301,6 +305,17 @@ int main(int argc , char **argv)
 	penv->max_expand_size = penv->phub->send_buff_size * 2 + (1024*1024);
 	penv->block_snd_size = penv->phub->send_buff_size + (1024*1024);
 	slog_log(slogd, SL_INFO , "Main:open bridge success! max_expand_size:%ld block_size:%ld" , penv->max_expand_size , penv->block_snd_size);
+
+    /*获得bridge的key文件及内容*/
+	snprintf(penv->key_file_name , sizeof(penv->key_file_name) , PROC_BRIDGE_HIDDEN_DIR_FORMAT"/"PROC_BRIDGE_HIDDEN_KEY_FILE , penv->name_space , 
+	    penv->proc_id);
+    penv->shm_key = get_bridge_shm_key(penv->name_space , penv->proc_id , 0 , penv->slogd);
+	if(penv->shm_key < 0)
+	{
+		slog_log(slogd , SL_ERR , "Error: get shmkey failed!");
+		slog_close(slogd);
+		return 0;
+	}
 
 		//print
 	print_target_info(&target_info);
@@ -2007,6 +2022,13 @@ static int add_ticker(carrier_env_t *penv)
 		return -1;
 	}
 
+    ret = append_carrier_ticker(penv , check_tmp_file , TIME_TICKER_T_CIRCLE , TICK_CHECK_TMP_FILE , "check_tmp_file" , penv);
+    if(ret < 0)
+	{
+		slog_log(slogd , SL_ERR , "<%s> add check_tmp_file failed!" , __FUNCTION__);
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -2918,7 +2940,6 @@ static int check_snd_buff_memory(void *arg)
 	target_info_t *ptarget_info = &target_info;
 	target_detail_t *ptarget = NULL;	
 	carrier_env_t *penv = (carrier_env_t *)arg;
-	int ret = -1;
 	unsigned int new_len = 0;
 	char *new_buff = NULL;
 	unsigned int should_copy = 0;
@@ -3001,6 +3022,45 @@ static int check_snd_buff_memory(void *arg)
 	return 0;
 }
 
+//保证tmp目录下的文件有效性.系统会定期清除该目录
+static int check_tmp_file(void *arg)
+{
+	int fd = -1;
+	int ret = -1;
+	char buff[64] = {0};
+	carrier_env_t *penv = (carrier_env_t *)arg;
+
+    //rewrite lock file
+    lseek(penv->lock_file_fd , 0 , SEEK_SET);
+
+	snprintf(buff , sizeof(buff) , "%-10d" , getpid());
+	write(penv->lock_file_fd , buff , strlen(buff));
+	slog_log(slogd , SL_INFO , "rewrite %s success!" , penv->lock_file_name);
+	
+
+    //rewrite key file
+    memset(buff , 0 , sizeof(buff));
+	fd = open(penv->key_file_name , O_RDWR|O_TRUNC , 0);
+	if(fd < 0)
+	{
+		slog_log(penv->slogd , SL_ERR , "<%s> open %s failed! err:%s" , __FUNCTION__ , penv->key_file_name , strerror(errno));
+		return -1;
+	}
+
+	snprintf(buff , sizeof(buff) , "%-10u" , penv->shm_key);
+    ret = write(fd , buff , strlen(buff));
+	close(fd);
+
+    if(ret < 0)
+	{
+		slog_log(penv->slogd , SL_ERR , "<%s> write to key file:%s failed! err:%s" , __FUNCTION__ , penv->key_file_name , strerror(errno));
+		return -1;		
+	} 
+
+    slog_log(penv->slogd , SL_INFO , "<%s> rewrite to key file:%s success! key:%d" , __FUNCTION__ , penv->key_file_name , penv->shm_key);
+	return 0;
+	
+}
 
 //接收来自客户端的pkg
 //return:-1:参数错误 -2:缓冲区满且到达上限 0:投递成功

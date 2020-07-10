@@ -1,7 +1,8 @@
 package lib
 
 import (
-  "time"
+	"sgame/proto/ss"
+	"time"
   "sgame/servers/comm"
   "sgame/proto/cs"
 )
@@ -36,7 +37,25 @@ func HandleClientPkg(pconfig *Config , pclient *comm.ClientPkg) {
 	var _func_ = "<HandleClientPkg>";
 	var gmsg cs.GeneralMsg;
 	log := pconfig.Comm.Log;
-	
+
+	//check pkg type
+	if pclient.PkgType == comm.CLIENT_PKG_T_CONN_CLOSED {
+		log.Info("%s connection closed! key:%v" , _func_ , pclient.ClientKey);
+		//clear map
+		uid , ok := pconfig.Ckey2Uid[pclient.ClientKey];
+		if ok {
+            log.Info("%s is already login. uid:%v notify to upper!" , _func_ , uid);
+            SendLogoutReq(pconfig , uid , ss.USER_LOGOUT_REASON_LOGOUT_CONN_CLOSED);
+            delete(pconfig.Ckey2Uid , pclient.ClientKey);
+            //xxxx
+            delete(pconfig.Uid2Ckey , uid);
+		} else {
+			log.Info("%s no need to upper post!" , _func_);
+		}
+		return;
+	}
+
+    //normal pkg
 	//decode msg
 	err := cs.DecodeMsg(pclient.Data, &gmsg);
 	if err != nil {
@@ -61,7 +80,19 @@ func HandleClientPkg(pconfig *Config , pclient *comm.ClientPkg) {
 		    	log.Debug("%s recv proto:%d success! v:%v" , _func_ , proto_id , *pmsg);
 		    	SendLoginReq(pconfig, pclient.ClientKey , pmsg);
 		    	conv_err = false;
-		    }  
+		    }
+	    case cs.CS_PROTO_LOGOUT_REQ:
+			uid , exist := pconfig.Ckey2Uid[pclient.ClientKey];
+			if !exist {
+				log.Err("%s proto:%d but not login! key:%v" , _func_ , proto_id , pclient.ClientKey);
+				return;
+			}
+	    	_ , ok := gmsg.SubMsg.(*cs.CSLogoutReq);
+	    	if ok {
+				log.Debug("%s recv proto:%d success! uid:%v" , _func_ , proto_id , uid);
+				SendLogoutReq(pconfig , uid , ss.USER_LOGOUT_REASON_LOGOUT_CLIENT_EXIT);
+				conv_err = false;
+			}
 		default:
 		    log.Err("%s illegal proto:%d" , _func_ , proto_id);
 		    return;   

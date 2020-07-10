@@ -14,6 +14,7 @@ import (
 const (
   CMD_PING="ping"
   CMD_LOGIN="login"
+  CMD_LOGOUT="logout"
   
   BUFF_LEN=(10*1024)
 )
@@ -33,6 +34,7 @@ func init() {
 	//init cmd_map
 	cmd_map[CMD_PING] = "ping to server";
 	cmd_map[CMD_LOGIN]="login";
+	cmd_map[CMD_LOGOUT]="logout";
 }
 
 func show_cmd() {
@@ -48,6 +50,7 @@ func RecvPkg(conn *net.TCPConn) {
 	for {
 		time.Sleep(10 * time.Millisecond);
 		if len(exit_ch) > 0 {
+			fmt.Print("read exit");
 			break;
 		}
 				
@@ -79,7 +82,6 @@ func RecvPkg(conn *net.TCPConn) {
 			        curr_ts := time.Now().UnixNano()/1000;	
 			        fmt.Printf("ping:%v ms\n", (curr_ts-prsp.TimeStamp)/1000);
 			    }
-			    return;
 			case cs.CS_PROTO_LOGIN_RSP:
 			    prsp , ok := gmsg.SubMsg.(*cs.CSLoginRsp);
 			    if ok {
@@ -88,7 +90,11 @@ func RecvPkg(conn *net.TCPConn) {
 			    		fmt.Printf("uid:%v sex:%d addr:%s\n", prsp.Basic.Uid , prsp.Basic.Sex , prsp.Basic.Addr);
 			    	}
 			    }
-			    return;  
+		    case cs.CS_PROTO_LOGOUT_RSP:
+		    	prsp , ok := gmsg.SubMsg.(*cs.CSLogoutRsp);
+		    	if ok {
+		    		fmt.Printf("logout result:%d msg:%s\n" , prsp.Result , prsp.Msg);
+				}
 			default:
 			  fmt.Printf("illegal proto:%d\n", gmsg.ProtoId);
 		}
@@ -119,7 +125,13 @@ func SendPkg(conn *net.TCPConn , cmd string) {
 	        psub.Name = "cs";
 	        psub.Device = "onepluse9";
 	        psub.Pass = "17908";
-	        gmsg.SubMsg = psub;    
+	        gmsg.SubMsg = psub;
+	    case CMD_LOGOUT:
+	    	fmt.Printf("logout...\n");
+	    	gmsg.ProtoId = cs.CS_PROTO_LOGOUT_REQ;
+	    	psub := new(cs.CSLogoutReq);
+	    	psub.Uid = 0;
+	    	gmsg.SubMsg = psub;
 	    default:
 	        fmt.Printf("illegal cmd:%s\n", cmd);    
 	        return;	        	
@@ -182,7 +194,7 @@ func main() {
 	defer conn.Close();
 	
 	rs := make([]byte , 128);
-	pack_buff := make([]byte , 128);	
+	//pack_buff := make([]byte , 128);
 	//read
 	go RecvPkg(conn);
 	
@@ -201,9 +213,10 @@ func main() {
 			    break;
 		    }
 		
-		    pkg_len := lnet.PackPkg(pack_buff, rs , (uint8)(*option));
+		    //pkg_len := lnet.PackPkg(pack_buff, rs , (uint8)(*option));
 		    //fmt.Printf("read %d bytes and packed:%d\n", n , pkg_len);		
-		    n , _ = conn.Write(pack_buff[:pkg_len]);
+		    //n , _ = conn.Write(pack_buff[:pkg_len]);
+		    SendPkg(conn , string(rs));
 		    time.Sleep(50 * time.Millisecond);
 	    }
 	    

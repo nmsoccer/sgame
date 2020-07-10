@@ -8,7 +8,8 @@ detail
 <h3>{{.ProcName}}</h3>
 {{ with .Stat }}
 Start: {{ if (le .StartTime.Unix 0) }} {{ print 0 }} {{ else }} {{ .StartTime.Format "2006-01-02 15:04:05" }} {{ end }} <br/>
-Heart: {{ if (le .HeartBeat.Unix 0) }} {{ print 0 }} {{ else }} {{ .HeartBeat.Format "2006-01-02 15:04:05" }} {{ end }}
+Heart: {{ if (le .HeartBeat.Unix 0) }} {{ print 0 }} {{ else }} {{ .HeartBeat.Format "2006-01-02 15:04:05" }} {{ end }} <br/>
+Stop: {{ if (le .StopTime.Unix 0) }} {{ 0 }} {{ else }} <font color="red">{{ .StopTime.Format "2006-01-02 15:04:05" }}</font> {{ end }}
 {{ end }}
 </body>
 </html>

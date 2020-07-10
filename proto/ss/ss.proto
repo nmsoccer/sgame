@@ -14,6 +14,8 @@ enum SS_PROTO_TYPE {
   PING_RSP = 3;
   LOGIN_REQ = 4;
   LOGIN_RSP = 5;
+  LOGOUT_REQ = 6;
+  LOGOUT_RSP = 7;
 }
 
 enum SS_COMMON_RESULT {
@@ -31,12 +33,14 @@ message SSMsg {
 	MsgPingRsp ping_rsp = 23;
 	MsgLoginReq login_req = 24;
 	MsgLoginRsp login_rsp = 25;
+	MsgLogoutReq logout_req = 26;
+	MsgLogoutRsp logout_rsp = 27;
   }  
 }
 
 
 
-/***sub msg***/
+/***SUB MSG***/
 //heartbeat
 message MsgHeartBeatReq {
   int64 ts = 1;
@@ -75,3 +79,24 @@ message MsgLoginRsp {
   string name=3;
   UserInfo user_info=20;
 }
+
+//logout
+enum USER_LOGOUT_REASON {
+  LOGOUT_CLIENT_EXIT = 0; //client positive logout
+  LOGOUT_CONN_CLOSED = 1; //client connection closed
+  LOGOUT_SERVER_KICK_RECONN = 2; //server kickout for reconn
+  LOGOUT_SERVER_KICK_BAN = 3; //server kickout for ban
+}
+
+
+message MsgLogoutReq {
+  int64 uid = 1;
+  USER_LOGOUT_REASON reason = 2; 
+}
+
+message MsgLogoutRsp {
+  int64 uid = 1;
+  USER_LOGOUT_REASON reason = 2;
+  string msg = 3;
+}
+

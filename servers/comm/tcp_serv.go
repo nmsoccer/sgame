@@ -1,14 +1,14 @@
 package comm
 
 import (
-  "net"
-  "time"
-  "sync"
-  "io"
-  lnet "sgame/lib/net"
-  "strconv"
-  "bytes"
-  "sgame/proto/ss"
+	"bytes"
+	"io"
+	"net"
+	lnet "sgame/lib/net"
+	"sgame/proto/ss"
+	"strconv"
+	"sync"
+	"time"
 )
 
 const (
@@ -25,10 +25,15 @@ const (
     SERV_RECV_QUEUE=4096
     SERV_SND_QUEUE=4096
     MAX_PKG_PER_RECV = 200 //max pkg per recv
-       
+
+    //QUEUE_INFO
+    QUEUE_INFO_NORMAL = 0
+    QUEUE_INFO_CLOSE = 1
+
     //ClientPkg.PkgType
     CLIENT_PKG_T_NORMAL = 1 // special pkg using key
     CLIENT_PKG_T_BROADCAST = 2 //broadcast pkg
+    CLIENT_PKG_T_CONN_CLOSED = 3 //client connection closed
     
     //R&W TIMEOUT
     CLIENT_RW_TIMEOUT = 2 //ms
@@ -46,7 +51,8 @@ type ClientPkg struct {
 
 
 type queue_data struct {
-	flag uint8
+	flag uint8 //tag net_pkg.PKG_OP_XX
+	info uint8
 	idx int //index of client
 	key int64
 	data []byte
@@ -122,7 +128,8 @@ func (pserv *TcpServ) Close(pconfig *CommConfig) {
 */
 func (pserv *TcpServ) Recv(pconfig *CommConfig) []*ClientPkg{
 	var pdata *queue_data;
-	//log := pconfig.Log;		
+	var _func_ = "TcpServ.Recv";
+	log := pconfig.Log;
 	result_len := len(pserv.recv_queue);
 	
 	//empty
@@ -146,8 +153,14 @@ func (pserv *TcpServ) Recv(pconfig *CommConfig) []*ClientPkg{
 		select {
 			case pdata = <- pserv.recv_queue:
 			    results[i] = new(ClientPkg);
-			    results[i].PkgType = CLIENT_PKG_T_NORMAL;
-			    results[i].ClientKey = pserv.client_list[pdata.idx].key;
+			    if pdata.info == QUEUE_INFO_NORMAL {
+					results[i].PkgType = CLIENT_PKG_T_NORMAL;
+				} else if pdata.info == QUEUE_INFO_CLOSE {
+					log.Info("%s [%d] read close connection! key:%v idx:%v" , _func_ , i , pdata.key , pdata.idx);
+					results[i].PkgType = CLIENT_PKG_T_CONN_CLOSED;
+				}
+			    //results[i].ClientKey = pserv.client_list[pdata.idx].key;
+			    results[i].ClientKey = pdata.key;
 			    results[i].Data = pdata.data;
 			default:
 			    //nothing;
@@ -287,12 +300,20 @@ func (pserv *TcpServ) close_clients(pconfig *CommConfig) {
 		select {
 			case idx := <- pserv.close_ch:    
 			    pclient := pserv.client_list[idx];
+			    //notify upper server
+				pdata := new(queue_data);
+				pdata.key = pclient.key;
+				pdata.idx = pclient.index;
+				pdata.info = QUEUE_INFO_CLOSE;
+			    pserv.recv_queue <- pdata;
+
+			    //close
 			    close_client(pconfig, pclient);
 			    delete(pserv.key_map, pserv.client_list[idx].key);
 			    pserv.client_list[idx] = nil;			    
 			    pserv.curr_conn--;
 			    log.Info("%s will close connection idx:%d curr_count:%d" , _func_ , idx , pserv.curr_conn);
-			default:
+		default:
 			    return;   
 		}
 	}
@@ -656,6 +677,7 @@ func (pclient *tcp_client) flush_recv_cache(pconfig *CommConfig , pserv *TcpServ
 	        copy(pdata.data , pkg_data);
 	        pdata.idx = pclient.index;
 	        pdata.flag = lnet.PkgOption(tag);
+	        pdata.info = QUEUE_INFO_NORMAL;
 	        if pdata.flag == lnet.PKG_OP_NORMAL { //normal pkg to upper
 	            pserv.recv_queue <- pdata;
 	        } else { //other optional pkg
@@ -770,7 +792,7 @@ func (pclient *tcp_client) flush_send_cache(pconfig *CommConfig , pserv *TcpServ
 	conn := pclient.conn;
 
 	//send data
-	conn.SetWriteDeadline(time.Now().Add(CLIENT_RW_TIMEOUT * time.Millisecond));
+	_ = conn.SetWriteDeadline(time.Now().Add(CLIENT_RW_TIMEOUT * time.Millisecond));
 	send_len , err := conn.Write(raw_data);
 	//log.Debug("%s raw:%v send:%d err:%v" , _func_ , raw_data , send_len , err);
 	

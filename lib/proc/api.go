@@ -2,11 +2,13 @@ package proc
 
 import (
 	"fmt"
+	"sync"
 )
 
 
 type ProcHeader interface {
     Send(target_id int, sending_data []byte, data_len int) int
+    SendByLock(target_id int, sending_data []byte, data_len int) int
     Recv(recv_buff []byte, recv_len int, sender *int) int
     Close() int	
 }
@@ -16,6 +18,7 @@ type ProcHeader interface {
 ////////////////SPEC PROC STRUCT//////////////
 type Proc struct {
 	bd int
+	sync.Mutex
 }
 
 /*
@@ -54,6 +57,27 @@ func (p *Proc) Send(target_id int, sending_data []byte, data_len int) int {
 		return -1;
 	}
 	return SendBridge(p.bd , target_id, sending_data, data_len);
+}
+
+/*
+ * 发送数据到目标进程.发送时加锁
+ * @target_id:目标服务进程的全局ID
+ * @sending_data:发送的数据
+ * @len:发送数据长度
+ * @return:
+ * -1：错误
+ * -2：发送缓冲区满
+ * -3：发送数据超出包长
+ * 0：成功
+ */
+func (p *Proc) SendByLock(target_id int, sending_data []byte, data_len int) int {
+	if p.bd < 0 {
+		return -1;
+	}
+	p.Lock();
+	ret := SendBridge(p.bd , target_id, sending_data, data_len);
+	p.Unlock();
+	return ret;
 }
 
 /*

@@ -65,7 +65,11 @@ func CommSet(pconfig *Config) bool {
 func SelfSet(pconfig *Config) bool {
 	var _func_ = "<SelfSet>";
 	log := pconfig.Comm.Log;
-	
+
+	//add ticker
+	pconfig.Comm.TickPool.AddTicker("heart_beat" , comm.TICKER_TYPE_CIRCLE , 0 , comm.PERIOD_HEART_BEAT_DEFAULT , SendHeartBeatMsg , pconfig);
+	pconfig.Comm.TickPool.AddTicker("report_sync" , comm.TICKER_TYPE_CIRCLE , 0 , comm.PERIOD_REPORT_SYNC_DEFAULT , ReportSyncServer , pconfig);
+
 	//start tcp serv to listen clients
 	pserv := comm.StartTcpServ(pconfig.Comm , pconfig.FileConfig.ListenAddr  , pconfig.FileConfig.MaxConn);
 	if pserv == nil {
@@ -98,6 +102,8 @@ func ServerExit(pconfig *Config) {
 	
 	//close report_serv
 	if pconfig.ReportServ != nil {
+		pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_STOP , time.Now().Unix() , "" , nil);
+		time.Sleep(time.Second);
 	    pconfig.ReportServ.Close();
 	}
 	
@@ -143,12 +149,6 @@ func ServerStart(pconfig *Config) {
 }
 
 /*----------------Static Func--------------------*/
-//each ticker
-func handle_tick(pconfig *Config) {
-    SendHeartBeatMsg(pconfig);
-    ReportSyncServer(pconfig);    	
-}
-
 func handle_info(pconfig *Config) {
 	log := pconfig.Comm.Log;	
 	select {
@@ -167,4 +167,9 @@ func handle_info(pconfig *Config) {
 		default:
 		    break;
 	}	
+}
+
+//each ticker
+func handle_tick(pconfig *Config) {
+	pconfig.Comm.TickPool.Tick(0);
 }

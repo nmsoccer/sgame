@@ -19,9 +19,11 @@ const (
   CS_PROTO_PING_RSP=2
   CS_PROTO_LOGIN_REQ=3
   CS_PROTO_LOGIN_RSP=4
+  CS_PROTO_LOGOUT_REQ=5
+  CS_PROTO_LOGOUT_RSP=6
   //PS:new proto added should modify 'proto2msg' function
   //proto end
-  CS_PROTO_END=5
+  CS_PROTO_END=7
   
   
     	
@@ -101,7 +103,11 @@ func proto2msg(proto_id int) (interface{} , error) {
 		case CS_PROTO_LOGIN_REQ:
 		    pmsg = new(CSLoginReq);
 		case CS_PROTO_LOGIN_RSP:
-		    pmsg = new(CSLoginRsp);       
+		    pmsg = new(CSLoginRsp);
+	    case CS_PROTO_LOGOUT_REQ:
+		    pmsg = new(CSLogoutReq);
+	    case CS_PROTO_LOGOUT_RSP:
+	    	pmsg = new(CSLogoutRsp);
 		default:
 		    return nil , errors.New("proto illegal!");
 	}

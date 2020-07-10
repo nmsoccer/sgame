@@ -63,7 +63,9 @@ func RecvMsg(pconfig *Config) int64 {
         	case ss.SS_PROTO_TYPE_LOGIN_REQ:
         	    RecvLoginReq(pconfig, ss_msg.GetLoginReq(), msg, pmsg.sender);
         	case ss.SS_PROTO_TYPE_LOGIN_RSP:
-        	    RecvLoginRsp(pconfig, ss_msg.GetLoginRsp() , msg);        
+        	    RecvLoginRsp(pconfig, ss_msg.GetLoginRsp() , msg);
+		    case ss.SS_PROTO_TYPE_LOGOUT_REQ:
+		    	RecvLogoutReq(pconfig , ss_msg.GetLogoutReq() , msg);
         	default:
         	    log.Err("%s fail! unknown proto type:%v" , _func_ , ss_msg.ProtoType);
         }  

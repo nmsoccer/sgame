@@ -86,7 +86,7 @@ func (pserv *ReportServ) Report(proto int , v_int int64 , v_str string , v_msg i
     
     //check chan
     if len(pserv.msg_send) >= cap(pserv.msg_send) {
-    	log.Err("%s faild! send channel full!" , _func_);
+    	log.Err("%s faild! send channel full:%d vs %d!" , _func_ , len(pserv.msg_send) , cap(pserv.msg_send));
     	return false;
     }
     
@@ -212,7 +212,7 @@ func (pserv *ReportServ) send() {
 		case REPORT_METHOD_SEQ:	
 		    _ , err = pserv.server_list[0].conn.Write(enc_data);
 		    if err != nil {
-			    log.Err("%s send to %s failed! err:%v" , _func_ , pserv.server_list[0].addr , err);
+			    //log.Err("%s send to %s failed! err:%v" , _func_ , pserv.server_list[0].addr , err);
 		    } else {
 			    //log.Debug("%s send to %s success! send:%d" , _func_ , pserv.server_list[0].addr , n);
 		    }
@@ -220,7 +220,7 @@ func (pserv *ReportServ) send() {
 		    for i:=0; i<len(pserv.server_list); i++ {
 		    	_ , err = pserv.server_list[i].conn.Write(enc_data);
 		    	if err != nil {
-			        log.Err("%s send to %s failed! err:%v" , _func_ , pserv.server_list[i].addr , err);
+			        //log.Err("%s send to %s failed! err:%v" , _func_ , pserv.server_list[i].addr , err);
 		        } else {
 			        //log.Debug("%s send to %s success! send:%d" , _func_ , pserv.server_list[i].addr , n);
 		        }
@@ -229,7 +229,7 @@ func (pserv *ReportServ) send() {
 		    pos := pserv.proc_id % len(pserv.server_list);
 		    _ , err = pserv.server_list[pos].conn.Write(enc_data);
 		    if err != nil {
-			    log.Err("%s send to %s failed! err:%v" , _func_ , pserv.server_list[pos].addr , err);
+			    //log.Err("%s send to %s failed! err:%v" , _func_ , pserv.server_list[pos].addr , err);
 		    } else {
 			    //log.Debug("%s send to %s success! send:%d" , _func_ , pserv.server_list[pos].addr , n);
 		    }
@@ -238,7 +238,7 @@ func (pserv *ReportServ) send() {
 		    pos := rand.Int() % len(pserv.server_list);
 		    _ , err = pserv.server_list[pos].conn.Write(enc_data);
 		    if err != nil {
-			    log.Err("%s send to %s failed! err:%v" , _func_ , pserv.server_list[pos].addr , err);
+			    //log.Err("%s send to %s failed! err:%v" , _func_ , pserv.server_list[pos].addr , err);
 		    } else {
 			    //log.Debug("%s send to %s success! send:%d" , _func_ , pserv.server_list[pos].addr , n);
 		    }        

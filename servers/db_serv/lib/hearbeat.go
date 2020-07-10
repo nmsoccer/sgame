@@ -7,23 +7,24 @@ import (
     //"math/rand"
 )
 
-var last_send int64;
-var last_hb_redis int64;
-var last_sync int64;
-const (
-    heart_beat_circle = 10;
-    sync_server_circle = 60;
-)
 
-func SendHeartBeatMsg(pconfig *Config) {
+func SendHeartBeatMsg(arg interface{}) {
+	var pconfig *Config;
 	var _func_ = "<SendHeartBeatMsg>";
 	curr_ts := time.Now().Unix();
-	if ((curr_ts-last_send) < heart_beat_circle) {
+	/*
+
+		if ((curr_ts-last_send) < heart_beat_circle) {
+			return;
+		}
+
+		//go>>>
+		last_send = curr_ts;
+	*/
+	pconfig , ok := arg.(*Config);
+	if !ok {
 		return;
 	}
-	
-	//go>>>
-	last_send = curr_ts;	
 	lp := pconfig.Comm.Log;
 	
 	//proto
@@ -92,12 +93,13 @@ func cb_heartbeat_redis(pconfig *comm.CommConfig , result interface{} , cb_arg [
 }
 
 
-func HeartBeatToRedis(pconfig *Config) {
-	curr_ts := time.Now().Unix();
-	if curr_ts < last_hb_redis + heart_beat_circle {
+func HeartBeatToRedis(arg interface{}) {
+	var pconfig *Config;
+	pconfig , ok := arg.(*Config);
+	if !ok {
 		return;
 	}
-	last_hb_redis = curr_ts;
+	curr_ts := time.Now().Unix();
 	if pconfig.FileConfig.RedisOpen != 1 {
 		return;
 	}
@@ -113,12 +115,12 @@ func HeartBeatToRedis(pconfig *Config) {
 	}
 }
 
-func ReportSyncServer(pconfig *Config) {
-    curr_ts := time.Now().Unix();
-    if last_sync+sync_server_circle >= curr_ts {
-    	return;
-    }
-    last_sync = curr_ts;
+func ReportSyncServer(arg interface{}) {
+	var pconfig *Config;
+	pconfig , ok := arg.(*Config);
+	if !ok {
+		return;
+	}
 	
 	//msg
 	pmsg := new(comm.SyncServerMsg);

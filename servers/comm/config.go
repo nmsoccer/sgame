@@ -23,10 +23,12 @@ const (
 type CommConfig struct {
     StartTs int64
     Log log.LogHeader
+    LockFile *os.File
 	Proc proc.ProcHeader
 	ChSig chan os.Signal
 	ChInfo chan int
-	PeerStats map[int] int64 //peer [procid]->heart_beat_ts	
+	PeerStats map[int] int64 //peer [procid]->heart_beat_ts
+	TickPool *TickPool
 }
 
 
@@ -69,7 +71,14 @@ func InitCommConfig(log_file string , name_space string , proc_id int) *CommConf
 		
 	//peer stats
 	pconfig.PeerStats = make(map[int]int64);
-	
+
+	//tick pool
+	pconfig.TickPool = NewTickPool(pconfig);
+	if pconfig.TickPool == nil {
+		lp.Err("new tick pool failed!");
+		return nil;
+	}
+
 	return pconfig;
 }
 

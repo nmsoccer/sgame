@@ -11,6 +11,7 @@ index
 {{ with .Stat}}
 Start: {{ if (le .StartTime.Unix 0) }} <font color="red">{{ 0 }}</font> {{ else }} <font color="green">{{ .StartTime.Format "2006-01-02 15:04:05" }}</font> {{ end }} 
 Heart: {{ if (le .HeartBeat.Unix 0) }} <font color="red">{{ 0 }}</font> {{ else }} <font color="green">{{ .HeartBeat.Format "2006-01-02 15:04:05" }}</font> {{ end }}
+Stop: {{ if (le .StopTime.Unix 0) }} {{ 0 }} {{ else }} <font color="red">{{ .StopTime.Format "2006-01-02 15:04:05" }}</font> {{ end }}
 {{ if (ne .ConnStr "") }} {{ .ConnStr }}: <font color="green">{{ .ConnNum }}</font> {{ end }}
 <br/>
 {{ end}}

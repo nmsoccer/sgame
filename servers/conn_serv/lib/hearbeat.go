@@ -6,22 +6,24 @@ import (
     "sgame/servers/comm"
 )
 
-var last_send int64;
-var last_sync int64;
-const (
-    heart_beat_circle = 10;
-    sync_server_circle = 60;
-)
 
-func SendHeartBeatMsg(pconfig *Config) {
+func SendHeartBeatMsg(arg interface{}) {
+	var pconfig *Config;
 	var _func_ = "<SendHeartBeatMsg>";
 	curr_ts := time.Now().Unix();
-	if ((curr_ts-last_send) < heart_beat_circle) {
+	/*
+
+		if ((curr_ts-last_send) < heart_beat_circle) {
+			return;
+		}
+
+		//go>>>
+		last_send = curr_ts;
+	*/
+	pconfig , ok := arg.(*Config);
+	if !ok {
 		return;
 	}
-	
-	//go>>>
-	last_send = curr_ts;	
 	lp := pconfig.Comm.Log;
 	
 	//proto
@@ -70,12 +72,12 @@ func RecvHeartBeatReq(pconfig *Config , preq *ss.MsgHeartBeatReq , from int) {
 	stats[from] = preq.GetTs();
 }
 
-func ReportSyncServer(pconfig *Config) {
-    curr_ts := time.Now().Unix();
-    if last_sync+sync_server_circle >= curr_ts {
-    	return;
-    }
-    last_sync = curr_ts;
+func ReportSyncServer(arg interface{}) {
+	var pconfig *Config;
+	pconfig , ok := arg.(*Config);
+	if !ok {
+		return;
+	}
 	
 	//msg
 	pmsg := new(comm.SyncServerMsg);

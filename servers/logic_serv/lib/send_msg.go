@@ -16,7 +16,7 @@ func SendToConnect(pconfig *Config , buff []byte) bool {
 		log.Err("%s to %d failed! ret:%d" , _func_ , target_id , ret);
 		return false;
 	}
-	log.Debug("%s to %d success!" , _func_ , target_id);
+	//log.Debug("%s to %d success!" , _func_ , target_id);
 	return true;
 }
 
@@ -41,6 +41,6 @@ func SendToDb(pconfig *Config , buff []byte) bool {
 		log.Err("%s to %d failed! ret:%d" , _func_ , target_id , ret);
 		return false;
 	}
-	log.Debug("%s to %d success!" , _func_ , target_id);
+	//log.Debug("%s to %d success!" , _func_ , target_id);
 	return true;
 }

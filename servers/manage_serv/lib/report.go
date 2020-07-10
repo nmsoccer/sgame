@@ -16,6 +16,7 @@ type PeerStat struct{
 	addr *net.UDPAddr
 	StartTime time.Time
 	HeartBeat time.Time
+	StopTime time.Time
 	ConnStr string
 	ConnNum int
 }
@@ -37,7 +38,6 @@ func ParseClientList(pconfig *Config) bool {
 	//init
 	log.Info("%s client list:%v" , _func_ , pconfig.FileConfig.ClientList);
 	pconfig.WatchMap = make(map[int]*WatchClient);
-	
 	//psarse
 	for i:=0; i<len(pconfig.FileConfig.ClientList); i++ {
 		//new
@@ -204,6 +204,9 @@ func (precver *ReportRecver) handle_msg(pmsg *comm.ReportMsg , peer_addr *net.UD
 		case comm.REPORT_PROTO_SERVER_START: //report serverstart
 		    log.Debug("%s <%d:%s> starts:%v" , _func_ , pwatch.ProcId , pwatch.ProcName , pmsg.IntValue);
 	        pstat.StartTime = time.Unix(pmsg.IntValue , 0);
+			if pstat.StartTime.After(pstat.StopTime) { //new start clear old stop
+				pstat.StopTime = time.Unix(0 , 0);
+			}
 	    case comm.REPORT_PROTO_SERVER_HEART: //report hearbeat
 	        //log.Debug("%s <%d:%s> heart:%v" , _func_ , pwatch.ProcId , pwatch.ProcName , pmsg.IntValue);
 	        pstat.HeartBeat = time.Unix(pmsg.IntValue , 0);
@@ -219,8 +222,12 @@ func (precver *ReportRecver) handle_msg(pmsg *comm.ReportMsg , peer_addr *net.UD
 	        	break;
 	        }
 	        pstat.StartTime = time.Unix(psync.StartTime , 0);
-	        
-	                
+	        if pstat.StartTime.After(pstat.StopTime) { //new start clear old stop
+	        	pstat.StopTime = time.Unix(0 , 0);
+			}
+	    case comm.REPORT_PROTO_SERVER_STOP: //report server stop time
+		    log.Info("%s <%d:%s> stop:%v" , _func_ , pwatch.ProcId , pwatch.ProcName , pmsg.IntValue);
+		    pstat.StopTime = time.Unix(pmsg.IntValue , 0);
 	    default:
 	        log.Err("%s unknown proto:%d" , _func_ , pmsg.ProtoId);        	    
 	}

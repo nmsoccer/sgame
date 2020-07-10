@@ -7,7 +7,7 @@ func SendToServer(pconfig *Config , buff []byte , target_id int) bool {
 	proc := pconfig.Comm.Proc;
 	
 	//send
-	ret := proc.Send(target_id , buff , len(buff));
+	ret := proc.SendByLock(target_id , buff , len(buff));
 	if ret < 0 {
 		log.Err("%s to %d failed! ret:%d" , _func_ , target_id , ret);
 		return false;

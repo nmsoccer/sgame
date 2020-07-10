@@ -13,6 +13,7 @@ const (
     REPORT_PROTO_RELOAD_TABLE = 4 //server reload table time
     REPORT_PROTO_CONN_NUM = 5 //server connection number.
     REPORT_PROTO_SYNC_SERVER = 6 //sync basic server information
+    REPORT_PROTO_SERVER_STOP = 7 //server stop time
 )
 
 //report msg

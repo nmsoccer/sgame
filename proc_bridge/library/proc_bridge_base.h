@@ -22,7 +22,8 @@
 #define BRIDGE_PROC_CONN_VERIFY_KEY_LEN 64	//链接验证码长度
 
 #define PROC_BRIDGE_HIDDEN_DIR_FORMAT "/tmp/.proc_bridge.%s"
-
+#define PROC_BRIDGE_HIDDEN_PID_FILE "carrier.%d.lock"
+#define PROC_BRIDGE_HIDDEN_KEY_FILE "carrier.%d.key"
 
 #define MANAGER_PROC_ID_MIN 1	//保留给manager的proc_id min
 #define MANAGER_PROC_ID_MAX 1000	//保留给manager的proc_id max

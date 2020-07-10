@@ -16,6 +16,7 @@ type User struct {
 
 type UserBasic struct {
 	Uid int64 `json:"uid"`
+	Name string `json:"name"`
 	Addr string `json:"addr"`
 	Sex uint8 `json:"sex"`
 }

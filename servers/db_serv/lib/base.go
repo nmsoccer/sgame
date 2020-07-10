@@ -53,6 +53,10 @@ func CommSet(pconfig *Config) bool {
 	
 	//comm config
 	pconfig.Comm = comm.InitCommConfig(pconfig.FileConfig.LogFile , pconfig.NameSpace , pconfig.ProcId);
+	if pconfig.Comm == nil {
+		fmt.Printf("%s init comm config failed!" , _func_);
+		return false;
+	}
 	
 	//lock uniq
 	if comm.LockUniqFile(pconfig.Comm , pconfig.NameSpace , pconfig.ProcId , pconfig.ProcName) == false {
@@ -66,7 +70,12 @@ func CommSet(pconfig *Config) bool {
 func SelfSet(pconfig *Config) bool {
 	var _func_ = "<SelfSet>";
 	log := pconfig.Comm.Log;
-	
+
+	//add ticker
+	pconfig.Comm.TickPool.AddTicker("heart_beat" , comm.TICKER_TYPE_CIRCLE , 0 , comm.PERIOD_HEART_BEAT_DEFAULT , SendHeartBeatMsg , pconfig);
+	pconfig.Comm.TickPool.AddTicker("report_sync" , comm.TICKER_TYPE_CIRCLE , 0 , comm.PERIOD_REPORT_SYNC_DEFAULT , ReportSyncServer , pconfig);
+	pconfig.Comm.TickPool.AddTicker("heart2redis" , comm.TICKER_TYPE_CIRCLE , 0 , 60000 , HeartBeatToRedis , pconfig);
+
 	//connect to redis
 	if pconfig.FileConfig.RedisOpen == 1 {
 	    pclient := OpenRedis(pconfig);
@@ -100,6 +109,8 @@ func ServerExit(pconfig *Config) {
 	
 	//close report_serv
 	if pconfig.ReportServ != nil {
+		pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_STOP , time.Now().Unix() , "" , nil);
+		time.Sleep(time.Second);
 	    pconfig.ReportServ.Close();
 	}
 	
@@ -163,7 +174,5 @@ func handle_info(pconfig *Config) {
 
 //each ticker
 func handle_tick(pconfig *Config) {
-    SendHeartBeatMsg(pconfig);
-    HeartBeatToRedis(pconfig);
-    ReportSyncServer(pconfig);    	
+	pconfig.Comm.TickPool.Tick(0);
 }

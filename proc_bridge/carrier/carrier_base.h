@@ -62,6 +62,7 @@ typedef struct _proc_entry_t
 #define TICK_ITER_SENDING_LIST 500//1500
 #define TICK_CHECK_HASH_MAP 15000
 #define TICK_CHECK_SND_BUFF_MEMROY 30000
+#define TICK_CHECK_TMP_FILE (3600000 * 6) //6h
 
 typedef int (* CARRIER_TICK) (void *arg); //return 0:single-shot; >0:next-expire-ms
 typedef struct _time_ticker_t
@@ -348,7 +349,10 @@ typedef struct _carrier_env_t
 	char proc_name[BRIDGE_PROC_NAME_LEN];
 	char name_space[PROC_BRIDGE_NAME_SPACE_LEN];
 	char lock_file_name[128];
+	int lock_file_fd;
 	char cfg_file_name[128];
+	char key_file_name[128];
+	int shm_key;
 	char file_back_buff;	//在内存不足时进行文件缓存 理论上可以无限缓存数据
 	int proc_id;
 	int slogd;	//slog descriptor

@@ -1,8 +1,8 @@
 package lib
 
 import (
-  "sgame/proto/cs"
-  "sgame/proto/ss"
+	"sgame/proto/cs"
+	"sgame/proto/ss"
 )
 
 func SendLoginReq(pconfig *Config , client_key int64 , plogin_req *cs.CSLoginReq) {
@@ -35,9 +35,9 @@ func SendLoginReq(pconfig *Config , client_key int64 , plogin_req *cs.CSLoginReq
 		return;
 	}
     log.Debug("%s send success!" , _func_);
-	
 	return;
 }
+
 
 func RecvLoginRsp(pconfig *Config , prsp *ss.MsgLoginRsp) {
 	var _func_ = "<RecvLoginRsp>";
@@ -73,4 +73,62 @@ func RecvLoginRsp(pconfig *Config , prsp *ss.MsgLoginRsp) {
 	
 	//to client
 	SendToClient(pconfig, prsp.CKey, &gmsg);		
+}
+
+func SendLogoutReq(pconfig *Config , uid int64 , reason ss.USER_LOGOUT_REASON) {
+	var _func_ = "<SendLogoutReq>";
+	log := pconfig.Comm.Log;
+	var ss_msg ss.SSMsg;
+	//construct
+	ss_msg.ProtoType = ss.SS_PROTO_TYPE_LOGOUT_REQ;
+	body := new(ss.SSMsg_LogoutReq);
+	body.LogoutReq = new(ss.MsgLogoutReq);
+    body.LogoutReq.Uid = uid;
+    body.LogoutReq.Reason = reason;
+    ss_msg.MsgBody = body;
+
+	//pack
+	coded , err := ss.Pack(&ss_msg);
+	if err != nil {
+		log.Err("%s pack failed! err:%v uid:%v reason:%v" , _func_ , err , uid , reason);
+		return;
+	}
+
+	//send
+	ok := SendToLogic(pconfig, coded);
+	if !ok {
+		log.Err("%s send failed! uid:%v reason:%v" , _func_ , uid , reason);
+		return;
+	}
+	log.Debug("%s send success!" , _func_);
+	return;
+}
+
+func RecvLogoutRsp(pconfig *Config , prsp *ss.MsgLogoutRsp) {
+	var _func_ = "<RecvLogoutRsp>";
+	log := pconfig.Comm.Log;
+	log.Info("%s uid:%v reason:%v msg:%s" , _func_ , prsp.Uid , prsp.Reason , prsp.Msg);
+
+	//response
+	var gmsg cs.GeneralMsg;
+	gmsg.ProtoId = cs.CS_PROTO_LOGOUT_RSP;
+	psub := new(cs.CSLogoutRsp);
+	gmsg.SubMsg = psub;
+
+    //fill
+    psub.Msg = prsp.Msg;
+    psub.Result = 0;
+    psub.Uid = prsp.Uid;
+
+    //to client
+    c_key , ok := pconfig.Uid2Ckey[prsp.Uid];
+    if !ok {
+    	log.Err("%s no c_key found! uid:%v reason:%v msg:%s" , _func_ , prsp.Uid , prsp.Reason , prsp.Msg);
+    	return;
+	}
+	SendToClient(pconfig , c_key , &gmsg);
+
+    //clear map
+    delete(pconfig.Uid2Ckey , prsp.Uid);
+    delete(pconfig.Ckey2Uid , c_key);
 }

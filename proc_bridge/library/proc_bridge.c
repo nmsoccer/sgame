@@ -747,7 +747,7 @@ _recv_again:
  * 根据命名空间和proc_id获得对应的shm key
  * @-1:failed else:key
  */
-int get_bridge_shm_key(char *name_space , int proc_id , int creater , int slogd)
+int get_bridge_shm_key_old(char *name_space , int proc_id , int creater , int slogd)
 {
 	struct stat file_stat;
 	char dir_name[128] = {0};
@@ -762,7 +762,8 @@ int get_bridge_shm_key(char *name_space , int proc_id , int creater , int slogd)
 	slog_log(slogd , SL_INFO , "<%s> name_space:%s proc_id:%d creater:%d" , __FUNCTION__ , name_space , proc_id , creater);
 	/***Dir And Path*/
 	snprintf(dir_name , sizeof(dir_name) , PROC_BRIDGE_HIDDEN_DIR_FORMAT , name_space);
-	snprintf(file_path , sizeof(file_path) , "%s/carrier.%d.key" , dir_name , proc_id);
+	//snprintf(file_path , sizeof(file_path) , "%s/carrier.%d.key" , dir_name , proc_id);
+    snprintf(file_path , sizeof(file_path) , PROC_BRIDGE_HIDDEN_DIR_FORMAT"/"PROC_BRIDGE_HIDDEN_KEY_FILE , name_space , proc_id);
 
 	/***Try Create Dir*/
 	if(creater)
@@ -826,6 +827,112 @@ int get_bridge_shm_key(char *name_space , int proc_id , int creater , int slogd)
 	close(fd);
 	return my_key;
 }
+
+
+
+/*
+ * 根据命名空间和proc_id获得对应的shm key
+ * @-1:failed else:key
+ */
+int get_bridge_shm_key(char *name_space , int proc_id , int creater , int slogd)
+{
+	struct stat file_stat;
+	char dir_name[128] = {0};
+	char file_path[256] = {0};
+	char buff[12] = {0};
+	int ret = -1;
+	int fd = -1;
+	int my_key = 0;
+	/***Arg Check*/
+	if(!name_space || proc_id<=0)
+		return -1;
+
+	slog_log(slogd , SL_INFO , "<%s> name_space:%s proc_id:%d creater:%d" , __FUNCTION__ , name_space , proc_id , creater);
+	/***Dir And Path*/
+	snprintf(dir_name , sizeof(dir_name) , PROC_BRIDGE_HIDDEN_DIR_FORMAT , name_space);
+	//snprintf(file_path , sizeof(file_path) , "%s/carrier.%d.key" , dir_name , proc_id);
+    snprintf(file_path , sizeof(file_path) , PROC_BRIDGE_HIDDEN_DIR_FORMAT"/"PROC_BRIDGE_HIDDEN_KEY_FILE , name_space , proc_id);
+
+	/***Create*/
+	if(creater)
+	{
+	    //dir
+		ret = mkdir(dir_name , 0755);
+		if(ret < 0)
+		{
+			do
+			{
+				if(errno == EEXIST)
+				{
+					slog_log(slogd , SL_DEBUG , "<%s> dir:%s is existed!" , __FUNCTION__ , dir_name);
+					break;
+				}
+				else
+				{
+					slog_log(slogd , SL_ERR , "<%s> create dir:%s failed! err:%s" , __FUNCTION__ , dir_name , strerror(errno));
+					return -1;
+				}
+			}
+			while(0);
+		}
+
+        // file
+        fd = open(file_path , O_RDWR|O_CREAT , 0644);	//
+		if(fd < 0)
+		{
+			slog_log(slogd , SL_ERR , "<%s> open file:%s when try create failed for %s" , __FUNCTION__ , file_path , strerror(errno));
+			return -1;
+		}
+
+        // generate key
+	    ret = fstat(fd , &file_stat);
+	    if(ret < 0)
+	    {
+		    slog_log(slogd , SL_ERR , "<%s> stat file:%s filed for %s" , __FUNCTION__ , file_path , strerror(errno));
+		    return -1;
+	    }
+
+	    //combine key
+	    my_key = my_key | ((file_stat.st_mtime&0x007F0000) << 8);
+	    my_key = my_key | ((file_stat.st_ino & 0x0000FFFF) << 8);
+	    my_key = my_key | (proc_id & 0x000000FF);	    
+        
+		//write
+        snprintf(buff , sizeof(buff) , "%-10u" , my_key);
+        ret = write(fd , buff , strlen(buff));
+        if(ret < 0)
+		{
+			slog_log(slogd , SL_ERR , "<%s> write to key file:%s failed! err:%s" , __FUNCTION__ , file_path , strerror(errno));
+			return -1;
+		}
+		slog_log(slogd , SL_INFO , "<%s> create file_path:%s mtime:0x%lX ino:0x%lX proc_id:0x%X key is:0x%X" , __FUNCTION__ , file_path ,
+		    file_stat.st_mtime , file_stat.st_ino , proc_id , my_key);
+		close(fd);
+        return my_key;
+	}
+
+	/***Get*/
+	fd = open(file_path , O_RDONLY , 0);
+	if(fd < 0)
+	{
+		slog_log(slogd , SL_ERR , "<%s> open file:%s when no create.failed for %s" , __FUNCTION__ , file_path , strerror(errno));
+		return -1;
+	}
+	
+	ret = read(fd , buff , sizeof(buff));
+	if(ret < 0)
+	{
+		slog_log(slogd , SL_ERR , "<%s> read  key file:%s failed! err:%s" , __FUNCTION__ , file_path , strerror(errno));
+		close(fd);
+		return -1;
+	}
+
+    my_key = atoi(buff);
+	slog_log(slogd , SL_INFO , "<%s> get key_file:%s key:0x%X" , __FUNCTION__ , file_path , my_key);
+	close(fd);
+	return my_key;
+}
+
 
 //get curr ms
 static long long _get_curr_ms()
