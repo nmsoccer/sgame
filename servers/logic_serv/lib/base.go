@@ -15,6 +15,8 @@ type FileConfig struct {
 	SlaveDb int `json:"slave_db"`
 	LogFile string `json:"log_file"`
 	ManageAddr []string `json:"manage_addr"`
+	MaxOnline int `json:"max_online"`
+	ClientTimeout int `json:"client_timeout"`
 }
 
 
@@ -51,7 +53,11 @@ func CommSet(pconfig *Config) bool {
 	
 	//comm config
 	pconfig.Comm = comm.InitCommConfig(pconfig.FileConfig.LogFile , pconfig.NameSpace , pconfig.ProcId);
-	
+	if pconfig.Comm == nil {
+		fmt.Printf("%s init comm config failed!" , _func_);
+		return false;
+	}
+	pconfig.Comm.ServerCfg = pconfig;
 	
 	var log = pconfig.Comm.Log;
 	//lock uniq
@@ -67,10 +73,6 @@ func CommSet(pconfig *Config) bool {
 func SelfSet(pconfig *Config) bool {
 	var _func_ = "<SelfSet>";
 	var log = pconfig.Comm.Log;
-
-	//add ticker
-	pconfig.Comm.TickPool.AddTicker("heart_beat" , comm.TICKER_TYPE_CIRCLE , 0 , comm.PERIOD_HEART_BEAT_DEFAULT , SendHeartBeatMsg , pconfig);
-    pconfig.Comm.TickPool.AddTicker("report_sync" , comm.TICKER_TYPE_CIRCLE , 0 , comm.PERIOD_REPORT_SYNC_DEFAULT , ReportSyncServer , pconfig);
 
 	//users
 	pconfig.Users = new(OnLineList);
@@ -94,8 +96,19 @@ func SelfSet(pconfig *Config) bool {
 	
 	//start report serv
 	pconfig.ReportServ = comm.StartReport(pconfig.Comm , pconfig.ProcId , pconfig.ProcName , pconfig.FileConfig.ManageAddr , comm.REPORT_METHOD_ALL);
-    pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_START , time.Now().Unix() , "" , nil);
-	
+	if pconfig.ReportServ == nil {
+		log.Err("%s fail! start report failed!" , _func_);
+		return false;
+	}
+	pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_START , time.Now().Unix() , "" , nil);
+
+	//add ticker
+	pconfig.Comm.TickPool.AddTicker("heart_beat" , comm.TICKER_TYPE_CIRCLE , 0 , comm.PERIOD_HEART_BEAT_DEFAULT , SendHeartBeatMsg , pconfig);
+	pconfig.Comm.TickPool.AddTicker("report_sync" , comm.TICKER_TYPE_CIRCLE , 0 , comm.PERIOD_REPORT_SYNC_DEFAULT , ReportSyncServer , pconfig);
+	pconfig.Comm.TickPool.AddTicker("check_client_heart" , comm.TICKER_TYPE_CIRCLE , 0 , int64(pconfig.FileConfig.ClientTimeout*1000) ,
+		CheckClientTimeout , pconfig);
+	pconfig.Comm.TickPool.AddTicker("recv_cmd" , comm.TICKER_TYPE_CIRCLE , 0 , comm.PERIOD_RECV_REPORT_CMD_DEFAULT , RecvReportCmd , pconfig)
+
 	return true;
 }
 

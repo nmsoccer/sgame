@@ -11,7 +11,7 @@ const (
 
 	PERIOD_HEART_BEAT_DEFAULT=10000 //10s
 	PERIOD_REPORT_SYNC_DEFAULT=60000 //1min
-
+    PERIOD_RECV_REPORT_CMD_DEFAULT=5000 //5s
 )
 
 type TickFunc func(arg interface{});

@@ -1,10 +1,12 @@
 { 
-  "logic_servs":[$logic_serv_start,$logic_serv_end],
+  "target_servs":[$ts1],
   "log_file":"db_serv.log",
-  "redis_open":1,
   "redis_addr":"$redis_addr",
   "max_conn":100,
   "normal_conn":10,
   "auth_pass":"cbuju",
-  "manage_addr":[":7000" , "127.0.0.1:7001"]
+  "manage_addr":[":7000" , "127.0.0.1:7001"],
+  "init_redis_after":10,
+  "init_uid":10001,
+  "uid_incr":1
 }

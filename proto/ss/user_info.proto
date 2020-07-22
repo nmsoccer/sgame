@@ -1,15 +1,29 @@
 syntax="proto3";
 package ss;
 
+import "item.proto";
+
 message UserBasic { 
   string name=20;
   int64 uid=21;
   string addr=22;
-  bool sex=23;
+  bool sex=23; //true:male false:female
   int32 age=24;
+  int32 level=25;
 }
+
+//blob to db
+message UserBlob {
+  int32 exp = 20;
+  int64 last_login_ts = 21;
+  int64 last_logout_ts = 22;
+  UserDepot depot = 23;
+}
+
+
 
 
 message UserInfo {
   UserBasic basic_info=20;
+  UserBlob blob_info=21;
 }

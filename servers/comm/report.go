@@ -81,7 +81,7 @@ func (pserv *ReportServ) Close() {
 * @v_msg: used for complex information. should be defined in report_proto.go
 */
 func (pserv *ReportServ) Report(proto int , v_int int64 , v_str string , v_msg interface{}) bool {
-    var	_func_ = "<report_serv.Report>";
+    var	_func_ = "<ReportServ.Report>";
     log := pserv.pconfig.Log;
     
     //check chan
@@ -108,6 +108,15 @@ func (pserv *ReportServ) Report(proto int , v_int int64 , v_str string , v_msg i
     //send   
     pserv.msg_send <- preport;
     return true;
+}
+
+
+func (pserv *ReportServ) Recv() *ReportMsg {
+	if len(pserv.msg_recv) <= 0 {
+		return nil;
+	}
+
+	return <- pserv.msg_recv;
 }
 
 
@@ -157,7 +166,8 @@ func (pserv *ReportServ) connect_all() {
 		
 		//save
 		pserv.server_list[i].conn = conn;
-		log.Info("%s dial manager %s success!" , _func_ , pserv.server_list[i].addr);
+		log.Info("%s dial manager %s local:%s success!" , _func_ , pserv.server_list[i].addr ,
+			conn.LocalAddr().String());
 	}
 	
 }
@@ -265,6 +275,7 @@ func (pserv *ReportServ) recv() {
 	}
 	
 	if max_recv <= 0 {
+		log.Err("%s warning recv channel full! len:%d" , _func_ , len(pserv.msg_recv));
 		return;
 	}
 
@@ -301,7 +312,8 @@ func (pserv *ReportServ) recv() {
     	    }
     	
     	    //append
-    	    log.Debug("%s from:%s recv proto:%d iv:%d sv:%s" , _func_ , pmanager.addr , pmsg.ProtoId , pmsg.IntValue , pmsg.StrValue);
+    	    //log.Debug("%s from:%s recv proto:%d iv:%d sv:%s" , _func_ , pmanager.addr , pmsg.ProtoId , pmsg.IntValue , pmsg.StrValue);
+    	    pserv.msg_recv <- pmsg;
     	    count += 1;
         }
 	}

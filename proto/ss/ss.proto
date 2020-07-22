@@ -16,6 +16,8 @@ enum SS_PROTO_TYPE {
   LOGIN_RSP = 5;
   LOGOUT_REQ = 6;
   LOGOUT_RSP = 7;
+  REG_REQ = 8;
+  REG_RSP = 9;
 }
 
 enum SS_COMMON_RESULT {
@@ -35,6 +37,8 @@ message SSMsg {
 	MsgLoginRsp login_rsp = 25;
 	MsgLogoutReq logout_req = 26;
 	MsgLogoutRsp logout_rsp = 27;
+	MsgRegReq reg_req = 28;
+	MsgRegRsp reg_rsp = 29;
   }  
 }
 
@@ -71,6 +75,7 @@ enum USER_LOGIN_RET {
   LOGIN_EMPTY = 1;
   LOGIN_PASS = 2;
   LOGIN_ERR = 3;
+  LOGIN_MULTI_ON = 4; //multi online
 }
 
 message MsgLoginRsp {
@@ -78,6 +83,7 @@ message MsgLoginRsp {
   int64 c_key=2;
   string name=3;
   UserInfo user_info=20;
+  int32 online_logic=21;
 }
 
 //logout
@@ -86,17 +92,40 @@ enum USER_LOGOUT_REASON {
   LOGOUT_CONN_CLOSED = 1; //client connection closed
   LOGOUT_SERVER_KICK_RECONN = 2; //server kickout for reconn
   LOGOUT_SERVER_KICK_BAN = 3; //server kickout for ban
+  LOGOUT_CLIENT_TIMEOUT = 4; //client timeout
 }
 
 
 message MsgLogoutReq {
   int64 uid = 1;
-  USER_LOGOUT_REASON reason = 2; 
+  USER_LOGOUT_REASON reason = 2;
+  UserInfo user_info = 3;  
 }
 
 message MsgLogoutRsp {
   int64 uid = 1;
   USER_LOGOUT_REASON reason = 2;
   string msg = 3;
+}
+
+//register
+message MsgRegReq {
+  int64 c_key = 20;
+  string name = 21;
+  string pass = 22;
+  bool sex=23;
+  string addr=24;
+}
+
+enum REG_RESULT {
+  REG_SUCCESS = 0;
+  REG_DUP_NAME = 1;
+  REG_DB_ERR = 2;
+}
+
+message MsgRegRsp {
+  REG_RESULT result=1;
+  int64 c_key=2;
+  string name=3;
 }
 

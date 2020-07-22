@@ -12,6 +12,13 @@ import(
 )
 
 const (
+	TIME_EPOLL_BASE int64 = 1577808000 //2020-01-01 00:00:00
+
+	TIME_FORMAT_SEC="2006-01-02 15:04:05"
+	TIME_FORMAT_MILL="2006-01-02 15:04:05.000"
+	TIME_FORMAT_MICR="2006-01-02 15:04:05.000000"
+	TIME_FORMAT_NANO="2006-01-02 15:04:05.000000000"
+
 	DEFAULT_SERVER_SLEEP_IDLE=5 //ms. server sleeps when idle 
 	
     INFO_EXIT = iota //0 server exit
@@ -29,6 +36,7 @@ type CommConfig struct {
 	ChInfo chan int
 	PeerStats map[int] int64 //peer [procid]->heart_beat_ts
 	TickPool *TickPool
+    ServerCfg interface{} //server *config if assigend
 }
 
 
@@ -124,4 +132,20 @@ func LoadJsonFile(config_file string , file_config interface{} , pconfig *CommCo
 		log.Info("%s load %s success!config:%v", _func_ , config_file , file_config);
 	}
 	return true;
+}
+
+//generate local id
+var seq uint16 = 1;
+func GenerateLocalId(wid int16) int64 {
+	var id int64 = 0
+	curr_ts := time.Now().Unix() //
+    diff := curr_ts - TIME_EPOLL_BASE;
+
+    seq += 1;
+    if seq >= 65530 {
+    	seq = 1;
+	}
+
+    id = ((int64(seq) & 0xFFFF) << 47) | ((int64(wid) & 0xFFFF) << 31) | (diff & 0x7FFFFFFF);
+	return id;
 }

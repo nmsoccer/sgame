@@ -14,6 +14,15 @@ const (
     REPORT_PROTO_CONN_NUM = 5 //server connection number.
     REPORT_PROTO_SYNC_SERVER = 6 //sync basic server information
     REPORT_PROTO_SERVER_STOP = 7 //server stop time
+    REPORT_PROTO_CMD_RELOAD = 8 //cmd to reload cfg
+    REPORT_PROTO_RELOAD_RSP = 9 //reload rsp
+
+    //Reload Stat
+	RELOAD_STAT_NONE = ""
+	RELOAD_STAT_ING = "ing"
+	RELOAD_STAT_SUCCESS = "done"
+	RELOAD_STAT_FAIL = "fail"
+	RELOAD_STAT_NOP = "nop" //no operation
 )
 
 //report msg

@@ -5,14 +5,24 @@
 index
 </title>
 <h2>Servers</h2>
+<form action="./cmd" method="post">
+  ProcName(regular exp support) <input type="text" name="proc_name" />  
+  Operation <select name="operation">
+  <option value="reload_cfg">reload(cfg)</option>
+  <option value="reload_table">reload(table)</option>
+  </select>  
+  <input type="submit" value="submit" /> <br/>
+</form>
+
 {{ range $proc_id , $watch := . }}
 {{ with $watch }}
 <a href="./detail?proc={{ $proc_id }}">{{ .ProcName }}</a> <br/>
 {{ with .Stat}}
 Start: {{ if (le .StartTime.Unix 0) }} <font color="red">{{ 0 }}</font> {{ else }} <font color="green">{{ .StartTime.Format "2006-01-02 15:04:05" }}</font> {{ end }} 
 Heart: {{ if (le .HeartBeat.Unix 0) }} <font color="red">{{ 0 }}</font> {{ else }} <font color="green">{{ .HeartBeat.Format "2006-01-02 15:04:05" }}</font> {{ end }}
-Stop: {{ if (le .StopTime.Unix 0) }} {{ 0 }} {{ else }} <font color="red">{{ .StopTime.Format "2006-01-02 15:04:05" }}</font> {{ end }}
+Stop: {{ if (le .StopTime.Unix 0) }} <font color="green">{{ 0 }}</font> {{ else }} <font color="red">{{ .StopTime.Format "2006-01-02 15:04:05" }}</font> {{ end }}
 {{ if (ne .ConnStr "") }} {{ .ConnStr }}: <font color="green">{{ .ConnNum }}</font> {{ end }}
+Reload: {{ if (le .ReloadTime.Unix 0) }} {{ 0 }} {{ else }} <font color="green">{{ .ReloadTime.Format "2006-01-02 15:04:05" }}</font> {{ if (eq .ReloadStat "ing") }} <font color="red">[{{ .ReloadStat }}]</font>{{ else }} <font color="green">[{{ .ReloadStat }}]</font>{{ end }} {{ end }}
 <br/>
 {{ end}}
 {{ end}}
