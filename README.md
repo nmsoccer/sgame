@@ -9,6 +9,23 @@ A Simple Game Framework  一个简单的游戏框架
 * **监控管理** 提供一套发布与管理工具，用于多游戏进程的配置管理与业务进程的监控 
 * **未完待续**
 
+### 安装
+#### 基础软件
+* **GO**  
+下载页面https://golang.google.cn/dl/ 或者 https://golang.org/dl/   
+这里下载并使用go 1.14版本，然后tar -C /usr/local -xzf go1.14.6.linux-amd64.tar.gz  修改本地.bashrc 
+export PATH=$PATH:/usr/local/go/bin export GOPATH=/home/nmsoccer/go 
+
+* **PROTOBUF**  
+下载页面https://github.com/protocolbuffers/protobuf/releases  
+这里选择下载protobuf-all-3.11.4.tar.gz.解压到本地后./configure --prefix=/usr/local/protobuf; make; make install  
+修改本地.bashrc export PATH=$PATH:/usr/local/protobuf/bin
+
+* **REDIS**  
+下载页面https://redis.io/download  
+这里选择下载redis-5.0.8.tar.gz. 解压到本地后make 然后拷贝src/redis-cli src/redis-server src/redis.conf 到/usr/local/bin.
+然后修改/usr/local/bin/redis.conf新增密码requirepass cbuju 用作sgame使用redis的连接密码
+
 
 ### 进程监控
 框架提供了一套简单的进程监控和可视化管理机制，包括了上报协议及管理进程.登陆manage server 配置里的ip:port(这里是localhost:8080)可以打开页面  
