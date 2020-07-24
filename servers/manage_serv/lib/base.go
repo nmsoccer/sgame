@@ -20,6 +20,8 @@ type FileConfig struct {
 	ClientList    []interface{} `json:"client_list"`
 	HeartTimeout  int           `json:"heart_timeout"`
 	ReloadTimeout int           `json:"reload_timeout"`
+	Auth          []string      `json:"auth"` //name:pass etc.
+	AuthExpire    int           `json:"auth_expire"` //expired seconds after auth
 }
 
 type Config struct {
@@ -33,6 +35,8 @@ type Config struct {
 	Name2Id    map[string]int
 	Recver     *ReportRecver
 	Panel      *PanelServ
+	AuthMap    map[string]*AuthInfo
+	TokenMap   map[string]string
 }
 
 //Comm Config Setting
@@ -75,6 +79,13 @@ func SelfSet(pconfig *Config) bool {
 		log.Err("%s parse client list failed!", _func_)
 		return false
 	}
+
+	//parse auth
+	if !ParseAuth(pconfig) {
+		log.Err("%s parse auth failed!" , _func_)
+		return false;
+	}
+
 
 	//start recver
 	pconfig.Recver = StartRecver(pconfig)
@@ -160,6 +171,7 @@ func handle_info(pconfig *Config) {
 		case comm.INFO_USR1:
 			log.Info(">>reload config!")
 			comm.LoadJsonFile(pconfig.ConfigFile, pconfig.FileConfig, pconfig.Comm)
+			ParseClientList(pconfig);
 		case comm.INFO_USR2:
 			log.Info(">>info usr2")
 		default:

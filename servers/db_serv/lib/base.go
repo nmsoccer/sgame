@@ -20,6 +20,7 @@ type FileConfig struct {
 	InitRedisAfter int      `json:"init_redis_after"` //init redis db info after start xx seconds
 	InitUid        int64    `json:"init_uid"`         //init uid number
 	UidIncr        int      `json:"uid_incr"`         //uid incr step
+	MonitorInv int      `json:"monitor_inv"` //monitor interval seconds
 }
 
 type Config struct {
@@ -83,7 +84,8 @@ func SelfSet(pconfig *Config) bool {
 	pconfig.RedisClient = pclient
 
 	//start report serv
-	pconfig.ReportServ = comm.StartReport(pconfig.Comm, pconfig.ProcId, pconfig.ProcName, pconfig.FileConfig.ManageAddr, comm.REPORT_METHOD_ALL)
+	pconfig.ReportServ = comm.StartReport(pconfig.Comm, pconfig.ProcId, pconfig.ProcName, pconfig.FileConfig.ManageAddr, comm.REPORT_METHOD_ALL ,
+		pconfig.FileConfig.MonitorInv)
 	if pconfig.ReportServ == nil {
 		log.Err("%s fail! start report failed!" , _func_);
 		return false;

@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sgame/servers/comm"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -14,11 +15,54 @@ const (
 	TIME_FORMAT_SEC = "2006-01-02 15:04:05"
 	INDEX_TMPL      = "./html_tmpl/index.html"
 	DETAIL_TMPL     = "./html_tmpl/detail.html"
+	LOGIN_TMPL      = "./html_tmpl/login.html"
+
+	COOKIE_NAME     = "manage_token"
 )
+
+type AuthInfo struct{
+	name string
+	pass string
+	login int64
+	token string
+}
+
 
 type PanelServ struct {
 	config *Config
+	token_seq uint16
 }
+
+func ParseAuth(pconfig *Config) bool {
+	var _func_ = "<ParseAuth>";
+	log := pconfig.Comm.Log;
+
+	//reclear
+	pconfig.AuthMap = make(map[string]*AuthInfo);
+    pconfig.TokenMap = make(map[string]string);
+
+    //parse
+    for _ , info := range pconfig.FileConfig.Auth {
+    	basic := strings.Split(info , ":");
+    	if len(basic) != 2 {
+    		log.Err("%s parse %s failed! please check!" , _func_ , info);
+    		return false;
+		}
+
+    	name := basic[0];
+    	pass := basic[1];
+    	pauth := new(AuthInfo);
+    	pconfig.AuthMap[name] = pauth;
+    	pauth.name = name;
+    	pauth.pass = pass;
+	}
+
+    log.Info("%s done! auth:%v" , _func_ , pconfig.AuthMap);
+    return true;
+}
+
+
+
 
 func StartPanel(pconfig *Config) *PanelServ {
 	var _func_ = "<StartPanel>"
@@ -38,10 +82,163 @@ func StartPanel(pconfig *Config) *PanelServ {
 }
 
 /*----------------------STATIC FUNC--------------------*/
+func (pserv *PanelServ) check_auth(w http.ResponseWriter , r *http.Request) bool {
+	var _func_ = "<panel.check_auth>";
+	pconfig := pserv.config;
+	log := pconfig.Comm.Log;
+
+	//GET COOKIE
+	cookie , err := r.Cookie(COOKIE_NAME);
+    if err != nil {
+    	log.Err("%s get cookie failed! err:%v" , _func_ , err);
+    	http.Redirect(w , r , "/login" , http.StatusUnauthorized);
+    	return false;
+	}
+
+	//check token
+	token := cookie.Value;
+	name , ok := pconfig.TokenMap[token];
+	if !ok {
+		log.Err("%s token not found! token:%v" , _func_ , token);
+		http.Redirect(w , r , "/login" , http.StatusUnauthorized);
+		return false;
+	}
+
+	//check name
+    pauth , ok := pconfig.AuthMap[name];
+    if !ok {
+		log.Err("%s user illegal! name:%s" , _func_ , name);
+		http.Redirect(w , r , "/login" , http.StatusUnauthorized);
+		return false;
+	}
+
+
+    //check auth info
+    curr_ts := time.Now().Unix();
+    if pauth.login + int64(pconfig.FileConfig.AuthExpire) < curr_ts {
+		log.Err("%s user expired! name:%s" , _func_ , name);
+		http.Redirect(w , r , "/login" , http.StatusUnauthorized);
+		return false;
+	}
+
+
+    log.Info("%s passed %s" , _func_ , name);
+    return true;
+}
+
+
+
+func (pserv *PanelServ) check_login(w http.ResponseWriter , r *http.Request) bool {
+	var _func_ = "<panel.check_login>";
+	pconfig := pserv.config;
+	log := pconfig.Comm.Log;
+
+	//check name
+	name := r.FormValue("name");
+    if name == "" {
+    	log.Err("%s fail! name empty!" , _func_);
+    	fmt.Fprintf(w , "name emtpy!");
+    	return false;
+	}
+
+	//name legal
+	auth_info , ok := pconfig.AuthMap[name];
+	if !ok {
+		fmt.Fprintf(w , "name invalid!");
+		return false;
+	}
+
+	//check pass
+	pass := r.FormValue("pass");
+	if name == "" {
+		log.Err("%s fail! pass empty!" , _func_);
+		fmt.Fprintf(w , "pass error!");
+		return false;
+	}
+
+	//pass match
+	if auth_info.pass != pass {
+		log.Err("%s fail! pass not match!" , _func_);
+		fmt.Fprintf(w , "pass error!");
+		return false;
+	}
+
+    return true;
+}
+
+func (pserv *PanelServ) login_get(w http.ResponseWriter , r *http.Request) {
+	var _func_ = "<panel.login_get>"
+	log := pserv.config.Comm.Log
+
+
+	//template
+	tmpl, err := template.ParseFiles(LOGIN_TMPL)
+	if err != nil {
+		log.Err("%s parse template %s failed! err:%v", _func_, LOGIN_TMPL, err)
+		fmt.Fprintf(w, "parse error!")
+		return
+	}
+
+	//output
+	tmpl.Execute(w, nil);
+}
+
+func (pserv *PanelServ) login_post(w http.ResponseWriter , r *http.Request) {
+	var _func_ = "<panel.login_post>"
+	pconfig := pserv.config;
+	log := pconfig.Comm.Log;
+
+    if !pserv.check_login(w , r) {
+    	return;
+	}
+	user_name := r.FormValue("name");
+	log.Info("%s login success! name:%s" , _func_ , user_name);
+
+
+	//token
+    token := fmt.Sprintf("%d" , comm.GenerateLocalId(int16(pconfig.ProcId) , &pserv.token_seq));
+    if pconfig.TokenMap == nil {
+    	pconfig.TokenMap = make(map[string]string);
+	}
+    pconfig.TokenMap[token] = user_name;
+
+    //update auth
+    pconfig.AuthMap[user_name].token = token;
+    pconfig.AuthMap[user_name].login = time.Now().Unix();
+
+
+	//set cookie
+	var cookie http.Cookie;
+	cookie.Name = COOKIE_NAME;
+	cookie.Value = token;
+	cookie.Expires = time.Now().Add(time.Second * time.Duration(pconfig.FileConfig.AuthExpire));
+    http.SetCookie(w , &cookie);
+
+
+	http.Redirect(w , r , "/index" , http.StatusFound);
+
+}
+
+func (pserv *PanelServ) login_handle(w http.ResponseWriter , r *http.Request) {
+    if r.Method == "GET" {
+    	pserv.login_get(w , r);
+	} else if r.Method == "POST" {
+		pserv.login_post(w , r);
+	} else {
+		fmt.Fprintf(w , "invalid method!");
+	}
+}
+
+
 func (pserv *PanelServ) index_handle(w http.ResponseWriter, r *http.Request) {
-	var _func_ = "panel.detail_get"
+	var _func_ = "<panel.index_handle>"
 	log := pserv.config.Comm.Log
 	pconfig := pserv.config
+
+	//check auth
+    if !pserv.check_auth(w , r) {
+    	return;
+	}
 
 	//template
 	tmpl, err := template.ParseFiles(INDEX_TMPL)
@@ -57,7 +254,7 @@ func (pserv *PanelServ) index_handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (pserv *PanelServ) detail_get(w http.ResponseWriter, r *http.Request) {
-	var _func_ = "panel.detail_get"
+	var _func_ = "<panel.detail_get>"
 	log := pserv.config.Comm.Log
 	pconfig := pserv.config
 
@@ -77,12 +274,23 @@ func (pserv *PanelServ) detail_get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//modify some info
+	if len(pconfig.WatchMap[proc_id].Stat.MonitorInfo) > 0 {
+		monitor_info := string(pconfig.WatchMap[proc_id].Stat.MonitorInfo);
+		monitor_info = strings.Replace(monitor_info, "\n", "<br/>", -1);
+		monitor_info = strings.Replace(monitor_info, " ", "&nbsp", -1);
+		pconfig.WatchMap[proc_id].Stat.MonitorInfo = template.HTML(monitor_info);
+	}
+
 	//output
 	tmpl.Execute(w, pconfig.WatchMap[proc_id])
 
 }
 
 func (pserv *PanelServ) detail_handle(w http.ResponseWriter, r *http.Request) {
+    if !pserv.check_auth(w , r) {
+    	return;
+	}
 
 	if r.Method == "GET" {
 		pserv.detail_get(w, r)
@@ -91,9 +299,14 @@ func (pserv *PanelServ) detail_handle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (pserv *PanelServ) cmd_handle(w http.ResponseWriter , r *http.Request) {
-	var _func_ = "<cmd_handle>"
+	var _func_ = "<panel.cmd_handle>"
 	pconfig := pserv.config;
 	log := pconfig.Comm.Log;
+
+	//check auth
+	if !pserv.check_auth(w , r) {
+		return;
+	}
 
 	//get proc name
 	proc_name := r.FormValue("proc_name");
@@ -107,7 +320,7 @@ func (pserv *PanelServ) cmd_handle(w http.ResponseWriter , r *http.Request) {
 	}
 
 	//operation
-	if operation != "reload_cfg" && operation != "reload_table" {
+	if operation != comm.RELOAD_CMD_CFG && operation != comm.RELOAD_CMD_TAB {
 		log.Err("%s illegal operation:%s" , _func_ , operation);
 		fmt.Fprintf(w , "Operation illegal!");
 		return;
@@ -136,6 +349,7 @@ func (pserv *PanelServ) cmd_handle(w http.ResponseWriter , r *http.Request) {
 		curr_ts := time.Now().Unix();
 		pconfig.WatchMap[proc_id].Stat.ReloadTime = time.Now();
 		pconfig.WatchMap[proc_id].Stat.ReloadStat = comm.RELOAD_STAT_ING;
+		pconfig.WatchMap[proc_id].Stat.ReloadCmd = operation;
         pserv.report_cmd(proc_id , comm.REPORT_PROTO_CMD_RELOAD , curr_ts , operation , nil);
 	}
 
@@ -154,6 +368,7 @@ func (pserv *PanelServ) serve() {
 		http.Handle("/", http.HandlerFunc(pserv.index_handle))
 		http.Handle("/detail", http.HandlerFunc(pserv.detail_handle))
         http.Handle("/cmd" , http.HandlerFunc(pserv.cmd_handle));
+		http.Handle("/login" , http.HandlerFunc(pserv.login_handle));
 		err := http.ListenAndServe(pserv.config.FileConfig.HttpAddr, nil)
 		if err != nil {
 			log.Err("%s failed! err:%v", _func_, err)

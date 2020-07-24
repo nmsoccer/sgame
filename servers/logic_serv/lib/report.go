@@ -33,7 +33,7 @@ func HandleReportCmd(pconfig *Config , pmsg *comm.ReportMsg) {
 
 	switch pmsg.ProtoId {
 	case comm.REPORT_PROTO_CMD_RELOAD:
-		if pmsg.StrValue == "reload_cfg" { //reload cfg
+		if pmsg.StrValue == comm.RELOAD_CMD_CFG { //reload cfg
 			var file_config FileConfig;
 			ret := comm.LoadJsonFile(pconfig.ConfigFile , &file_config , pconfig.Comm);
 			if ret {
@@ -43,7 +43,7 @@ func HandleReportCmd(pconfig *Config , pmsg *comm.ReportMsg) {
 			} else {
 				pconfig.ReportServ.Report(comm.REPORT_PROTO_RELOAD_RSP , pmsg.IntValue , comm.RELOAD_STAT_FAIL , nil);
 			}
-		} else if pmsg.StrValue == "reload_table" { //reload table
+		} else if pmsg.StrValue == comm.RELOAD_CMD_TAB { //reload table
 			ret := comm.ReLoadTableFiles(pconfig.TableMap , pconfig.Comm);
 			if ret {
 				log.Info("%s reload_table success! proto:%d" , _func_ , pmsg.ProtoId);

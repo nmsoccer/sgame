@@ -7,15 +7,17 @@ import (
 //report proto
 const (
 	MAX_REPORT_MSG_LEN = 10*1024
-    REPORT_PROTO_SERVER_START = 1 //server start time
-    REPORT_PROTO_SERVER_HEART = 2 //server heartbeat
-    REPORT_PROTO_RELOAD_CFG = 3 //server reload cfg time
-    REPORT_PROTO_RELOAD_TABLE = 4 //server reload table time
-    REPORT_PROTO_CONN_NUM = 5 //server connection number.
-    REPORT_PROTO_SYNC_SERVER = 6 //sync basic server information
-    REPORT_PROTO_SERVER_STOP = 7 //server stop time
-    REPORT_PROTO_CMD_RELOAD = 8 //cmd to reload cfg
-    REPORT_PROTO_RELOAD_RSP = 9 //reload rsp
+	//sys defined proto here
+	REPORT_PROTO_MONITOR = 1 //monitor information from top cmd
+	REPORT_PROTO_RESERVED = 10000 //reserved proto id
+	//user defined proto starts here
+    REPORT_PROTO_SERVER_START = 10001 //server start time
+    REPORT_PROTO_SERVER_HEART = 10002 //server heartbeat
+    REPORT_PROTO_CONN_NUM = 10003 //server connection number.
+    REPORT_PROTO_SYNC_SERVER = 10004 //sync basic server information
+    REPORT_PROTO_SERVER_STOP = 10005 //server stop time
+    REPORT_PROTO_CMD_RELOAD = 10006 //cmd to reload cfg
+    REPORT_PROTO_RELOAD_RSP = 10007 //reload rsp
 
     //Reload Stat
 	RELOAD_STAT_NONE = ""
@@ -23,6 +25,12 @@ const (
 	RELOAD_STAT_SUCCESS = "done"
 	RELOAD_STAT_FAIL = "fail"
 	RELOAD_STAT_NOP = "nop" //no operation
+
+	//Reload Cmd
+	RELOAD_CMD_NONE = ""
+	RELOAD_CMD_CFG = "reload_cfg"
+    RELOAD_CMD_TAB = "reload_table"
+
 )
 
 //report msg

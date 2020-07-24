@@ -17,7 +17,7 @@ import (
 #include <slog/slog.h>
 
 static int wrap_slog_log(int sld , int log_level , char *log) {
-	return slog_log(sld , log_level , log);
+	return slog_log(sld , log_level , "%s" , log);
 }
 */
 import "C"

@@ -1,7 +1,12 @@
 package comm
 
 import (
+	"bytes"
+	"fmt"
 	"net"
+	"os"
+	"os/exec"
+	"sync"
 	"time"
 	"math/rand"
 )
@@ -28,6 +33,7 @@ type manager_server struct {
 }
 
 type ReportServ struct {
+	sync.Mutex
 	pconfig *CommConfig
 	method int8
 	proc_id int
@@ -35,7 +41,8 @@ type ReportServ struct {
     server_list []*manager_server
     exit_ch chan bool
     msg_send chan *ReportMsg
-    msg_recv  chan *ReportMsg        	
+    msg_recv  chan *ReportMsg
+	monitor_interval int
 }
 
 
@@ -44,8 +51,9 @@ Start a Report Go-Routine
 * @proc_id process proc id
 * @proc_name process proc_name
 * @manage_addr manage servers addr, it could be many servers. addr like: "ip:port"
+* @moniter_inv monitor interval of monitor goroutine. -1:no monitor =0:no sleep(at least 1 second sleep) >0 sleep seconds
 */
-func StartReport(pconfig *CommConfig , proc_id int , proc_name string , manage_addr []string , method int8) *ReportServ{
+func StartReport(pconfig *CommConfig , proc_id int , proc_name string , manage_addr []string , method int8 , monitor_inv int) *ReportServ{
 	var _func_ = "<StartReport>"
 	log := pconfig.Log;
 	
@@ -55,6 +63,7 @@ func StartReport(pconfig *CommConfig , proc_id int , proc_name string , manage_a
 	pserv.proc_id = proc_id;
 	pserv.proc_name = proc_name;
 	pserv.method = method;
+	pserv.monitor_interval = monitor_inv;
 	pserv.server_list = make([]*manager_server , len(manage_addr));
 	for i:=0; i<len(pserv.server_list); i++ {
 		pserv.server_list[i] = new(manager_server);
@@ -68,6 +77,7 @@ func StartReport(pconfig *CommConfig , proc_id int , proc_name string , manage_a
 	log.Info("%s success! proc_id:%d proc_name:%s addr:%v method:%d" , _func_ , pserv.proc_id , pserv.proc_name , pserv.server_list , pserv.method);
 	pserv.connect_all();
 	pserv.serve();
+	go pserv.monitor();
 	return pserv;
 }
 
@@ -95,8 +105,8 @@ func (pserv *ReportServ) Report(proto int , v_int int64 , v_str string , v_msg i
     	log.Err("%s failed! no manager server valid!" , _func_);
     	return false;
     }
-    
-        
+
+
     //report msg
     var preport = new(ReportMsg);
     preport.ProtoId = proto;
@@ -119,7 +129,12 @@ func (pserv *ReportServ) Recv() *ReportMsg {
 	return <- pserv.msg_recv;
 }
 
-
+//set monitor interval
+func (pserv *ReportServ) SetMonitor(interval int) {
+    pserv.Lock();
+    pserv.monitor_interval = interval;
+    pserv.Unlock();
+}
 
 /*---------------------------------STATIC FUNC------------------------------*/
 //serve
@@ -143,6 +158,47 @@ func (pserv *ReportServ) serve() {
 	    }
 	}();
 }
+
+func (pserv *ReportServ) monitor() {
+	var _func_ = "<monitor>"
+	var stdout bytes.Buffer;
+	var err error;
+	var interv int;
+	pid := os.Getpid();
+
+	log := pserv.pconfig.Log;
+
+	exe_cmd := fmt.Sprintf("top -b -p %d -n 1" , pid);
+    for {
+    	interv = pserv.monitor_interval;
+    	//<0 do nothing  just check per 10seconds
+    	if interv < 0 {
+    		time.Sleep(10 * time.Second)
+    		continue;
+		}
+
+		//get top info
+        stdout.Reset();
+		cmd := exec.Command("bash" , "-c" , exe_cmd);
+		cmd.Stdout = &stdout;
+		cmd.Stderr = nil;
+    	err = cmd.Run();
+    	if err != nil {
+    		log.Err("%s run command:%s fail! err:%v" , _func_ , exe_cmd , err);
+		} else {
+            pserv.Report(REPORT_PROTO_MONITOR , 0 , stdout.String() , nil);
+		}
+
+		//sleep
+		if interv == 0 {
+			interv = 1; //at least 1second sleep
+		}
+		time.Sleep(time.Duration(interv) * time.Second);
+
+	}
+}
+
+
 
 //connect all
 func (pserv *ReportServ) connect_all() {

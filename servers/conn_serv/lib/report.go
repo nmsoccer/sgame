@@ -33,7 +33,7 @@ func HandleReportCmd(pconfig *Config , pmsg *comm.ReportMsg) {
 
 	switch pmsg.ProtoId {
 	case comm.REPORT_PROTO_CMD_RELOAD:
-		if pmsg.StrValue == "reload_cfg" {
+		if pmsg.StrValue == comm.RELOAD_CMD_CFG {
 			var file_config FileConfig;
 			ret := comm.LoadJsonFile(pconfig.ConfigFile , &file_config , pconfig.Comm);
 			if ret {

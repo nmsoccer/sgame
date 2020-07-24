@@ -135,17 +135,17 @@ func LoadJsonFile(config_file string , file_config interface{} , pconfig *CommCo
 }
 
 //generate local id
-var seq uint16 = 1;
-func GenerateLocalId(wid int16) int64 {
+//var seq uint16 = 1;
+func GenerateLocalId(wid int16 , seq *uint16) int64 {
 	var id int64 = 0
 	curr_ts := time.Now().Unix() //
     diff := curr_ts - TIME_EPOLL_BASE;
 
-    seq += 1;
-    if seq >= 65530 {
-    	seq = 1;
+    *seq = *seq + 1;
+    if *seq >= 65530 {
+    	*seq = 1;
 	}
 
-    id = ((int64(seq) & 0xFFFF) << 47) | ((int64(wid) & 0xFFFF) << 31) | (diff & 0x7FFFFFFF);
+    id = ((int64(*seq) & 0xFFFF) << 47) | ((int64(wid) & 0xFFFF) << 31) | (diff & 0x7FFFFFFF);
 	return id;
 }

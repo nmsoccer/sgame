@@ -17,6 +17,7 @@ type FileConfig struct {
 	ManageAddr []string `json:"manage_addr"`
 	MaxOnline int `json:"max_online"`
 	ClientTimeout int `json:"client_timeout"`
+	MonitorInv int      `json:"monitor_inv"` //monitor interval seconds
 }
 
 
@@ -95,7 +96,8 @@ func SelfSet(pconfig *Config) bool {
 	}
 	
 	//start report serv
-	pconfig.ReportServ = comm.StartReport(pconfig.Comm , pconfig.ProcId , pconfig.ProcName , pconfig.FileConfig.ManageAddr , comm.REPORT_METHOD_ALL);
+	pconfig.ReportServ = comm.StartReport(pconfig.Comm , pconfig.ProcId , pconfig.ProcName , pconfig.FileConfig.ManageAddr , comm.REPORT_METHOD_ALL ,
+		pconfig.FileConfig.MonitorInv);
 	if pconfig.ReportServ == nil {
 		log.Err("%s fail! start report failed!" , _func_);
 		return false;

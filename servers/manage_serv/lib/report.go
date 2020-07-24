@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"html/template"
 	"net"
 	"sgame/servers/comm"
 	"time"
@@ -22,6 +23,8 @@ type PeerStat struct {
 	ConnNum   int
 	ReloadTime  time.Time //latest reload time
 	ReloadStat string //refer RELOAD_STAT_XX
+	ReloadCmd  string
+	MonitorInfo template.HTML //monitor info
 }
 
 
@@ -255,8 +258,11 @@ func (precver *ReportRecver) handle_msg(pmsg *comm.ReportMsg, peer_addr *net.UDP
 	case comm.REPORT_PROTO_SERVER_START: //report serverstart
 		log.Debug("%s <%d:%s> starts:%v", _func_, pwatch.ProcId, pwatch.ProcName, pmsg.IntValue)
 		pstat.StartTime = time.Unix(pmsg.IntValue, 0)
-		if pstat.StartTime.After(pstat.StopTime) { //new start clear old stop
+		if pstat.StartTime.After(pstat.StopTime) { //new start clear xx
 			pstat.StopTime = time.Unix(0, 0)
+			pstat.ReloadTime = time.Unix(0 , 0)
+			pstat.ReloadStat = comm.RELOAD_STAT_NONE
+			pstat.ReloadCmd = comm.RELOAD_CMD_NONE
 		}
 	case comm.REPORT_PROTO_SERVER_HEART: //report hearbeat
 		//log.Debug("%s <%d:%s> heart:%v" , _func_ , pwatch.ProcId , pwatch.ProcName , pmsg.IntValue);
@@ -289,6 +295,13 @@ func (precver *ReportRecver) handle_msg(pmsg *comm.ReportMsg, peer_addr *net.UDP
 		} else {
 			log.Err("%s reload ts not match! %d vs %d" , _func_ , pwatch.Stat.ReloadTime.Unix() , pmsg.IntValue);
 		}
+
+	case comm.REPORT_PROTO_MONITOR:
+		//log.Debug("%s <%d:%s> monitor:%s", _func_, pwatch.ProcId, pwatch.ProcName, pmsg.StrValue);
+		//str := strings.Replace(pmsg.StrValue , "\n" , "<br/>" , -1);
+		//str = strings.Replace(str , " " , "&nbsp&nbsp&nbsp&nbsp" , -1);
+		pwatch.Stat.MonitorInfo = template.HTML(pmsg.StrValue);
+
 
 	default:
 		log.Err("%s unknown proto:%d", _func_, pmsg.ProtoId)

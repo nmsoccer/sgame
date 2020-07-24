@@ -15,6 +15,7 @@ type FileConfig struct {
 	ListenAddr string   `json:"listen_addr"`
 	ManageAddr []string `json:"manage_addr"`
 	ZlibOn     int      `json:"zlib_on"` //json compessed by zlib
+	MonitorInv int      `json:"monitor_inv"` //monitor interval seconds
 }
 
 type Config struct {
@@ -83,7 +84,8 @@ func SelfSet(pconfig *Config) bool {
 	pconfig.Uid2Ckey = make(map[int64]int64)
 
 	//start report serv
-	pconfig.ReportServ = comm.StartReport(pconfig.Comm, pconfig.ProcId, pconfig.ProcName, pconfig.FileConfig.ManageAddr, comm.REPORT_METHOD_ALL)
+	pconfig.ReportServ = comm.StartReport(pconfig.Comm, pconfig.ProcId, pconfig.ProcName, pconfig.FileConfig.ManageAddr, comm.REPORT_METHOD_ALL ,
+		pconfig.FileConfig.MonitorInv);
 	if pconfig.ReportServ == nil {
 		log.Err("%s fail! start report failed!" , _func_);
 		return false;
