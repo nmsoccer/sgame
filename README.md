@@ -77,7 +77,7 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
     * 进入$GOPATH/src/sgame/servers/spush
     * spush是一个分发管理工具，具体使用可以参考https://github.com/nmsoccer/spush 这里也将其集成到了框架内部
     * sgame.json,sgame_shut.json是spush使用的配置文件，我们都是本地部署所以只需要sgame.json，sgame_shut.json文件里的nmsoccer用户名配置成本机有效用户xxx即可
-      sed -i "s/nmsoccer/xxx/g" sgame.json; sed -i "s/nmsoccer/xxx/g" sgame.json
+      sed -i "s/nmsoccer/xxx/g" sgame.json; sed -i "s/nmsoccer/xxx/g" sgame_shut.json
     * 发布拉起 
       ./spush -P -f sgame.json 结果如下:
       ```
@@ -96,8 +96,11 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
 
       +++++++++++++++++++++end (2020-07-27 17:08:07)+++++++++++++++++++++
       ```
-      说明OK鸟
-      
+      说明OK鸟  
+    
+    * 关闭进程  
+      ./spush -P -f sgame_shut.json即可
+    
     * 页面监控
     如果拉起进程顺利，我们可以打开页面查看，默认配置是8080 需要用户名及密码 默认配置于spush/tmpl/manage_serv.tmpl:auth配置项。我们选用admin登陆查看：
     ![管理页面](https://github.com/nmsoccer/sgame/blob/master/pic/manage.png)   
