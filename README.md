@@ -100,7 +100,7 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
       
     * 页面监控
     如果拉起进程顺利，我们可以打开页面查看，默认配置是8080 需要用户名及密码 默认配置于spush/tmpl/manage_serv.tmpl:auth配置项。我们选用admin登陆查看：
-    ![管理页面](https://github.com/nmsoccer/sgame/blob/master/pic/manage.png) 
+    ![管理页面](https://github.com/nmsoccer/sgame/blob/master/pic/manage.png)   
     点击具体进程还可以查看到具体的性能指标，这里使用top的输出数据  
     ![详细信息](https://github.com/nmsoccer/sgame/blob/master/pic/man_detail.png)
 
