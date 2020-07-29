@@ -27,7 +27,7 @@ export PATH=$PATH:/usr/local/go/bin export GOPATH=/home/nmsoccer/go
 然后修改/usr/local/bin/redis.conf新增密码requirepass cbuju 用作sgame使用redis的连接密码;修改port 6698作为监听端口 然后cd /usr/local/bin; ./redis-server ./redis.conf & 拉起即可  
 
 #### 必需库
-* **PROTOBUF-C**  
+* **PROTOBUF-GO**  
 这里用手动安装来说明.
   * 下载安装  
   进入https://github.com/protocolbuffers/protobuf-go 下载protobuf-go-master.zip, 然后拷贝到GOPATH/src: cp protobuf-go-master.zip $GOPATH/src/google.golang.org/; cd $GOPATH/src/google.golang.org/; 解压并改名解压后的目录为protobuf: unzip protobuf-go-master.zip; mv protobuf-go-master/ protobuf/
@@ -64,7 +64,7 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
   进入 https://github.com/nmsoccer/sgame; 下载sgame-master.zip到本地; 部署cp sgame-master.zip $GOPATH/src/; cd $GOPATH/src; unzip sgame-master.zip; mv sgame-master sgame 完成
   * 配置通信  
     * 进入 $GOPATH/src/sgame/proc_bridge. (这里的proc_bridge就是上面安装的proc_bridge组件，只是为了方便集成到这个项目里了).然后执行./init.sh初始化一些配置.
-    * 进入sgame/目录。 修改bridge.cfg配置，因为我们是本机部署，所以这里修改BRIDGE_USER，BRIDGE_DIR这两个选项使得用户为本机有效用户即可.具体配置项请参考https://github.com/nmsoccer/proc_bridge/wiki/config-detail说明
+    * 进入sgame/目录。 修改bridge.cfg配置，因为我们是本机部署，所以这里修改BRIDGE_USER，BRIDGE_DIR这两个选项使得用户为本机有效用户即可.具体配置项请参考https://github.com/nmsoccer/proc_bridge/wiki/config-detail
     * 执行 chmod u+x build.sh; ./build.sh install  
     * 执行 ./manager -i 1 -N sgame 这是一个通信管理工具 执行命令STAT * 可以查看到当前路由的建立情况. 具体使用可以参考https://github.com/nmsoccer/proc_bridge/wiki/manager  
 
