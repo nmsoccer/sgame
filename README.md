@@ -219,7 +219,7 @@ sgame
 * **SPUSH**   
 之前介绍过的SPUSH文件部署工具，其中tmpl用于各业务进程配置所使用的模板  
 
-* **xls_conv**  
+* **XLS_CONV**  
 用于业务进程所使用的资源转换工具，将excel文件转换为相关的json文件。具体使用可以参考https://github.com/nmsoccer/xlsconv  
 
 ### 更多说明  
