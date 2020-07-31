@@ -121,4 +121,106 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
     ![关闭进程done](https://github.com/nmsoccer/sgame/blob/master/pic/stopped_server.png)   
     
 
+### 代码结构
+下面介绍一下框架的代码目录及其功能
+```
+sgame
+|-- client
+|-- lib
+|   |-- log
+|   |-- net
+|   `-- proc
+|-- pic
+|-- proc_bridge
+|   |-- carrier
+|   |   `-- tools
+|   |-- library
+|   `-- sgame
+|
+|-- proto
+|   |-- cs
+|   `-- ss
+|-- servers
+|   |-- comm
+|   |-- conn_serv
+|   |   `-- lib
+|   |-- db_serv
+|   |   `-- lib
+|   |-- logic_serv
+|   |   |-- lib
+|   |   |-- table
+|   |   `-- table_desc
+|   |-- manage_serv
+|   |   |-- html_tmpl
+|   |   `-- lib
+|   `-- spush       
+|       |-- tmpl
+|       `-- tools
+|
+`-- xls_conv
+    `-- xls
+```
 
+* **CLIENT**  
+这里主要放置了用于测试功能的客户端文件game_cli.go以及用于压测的press.go  
+
+* **LIB**    
+这里放置了可以供客户端和服务器进程使用的一些公开基础库，目前主要包括:  
+  * log  
+  日志库，封装了slog的go包，同时对多协程的日志记录进行了相应处理
+  * net 
+  网络收发的基本协议格式，规定了CLIENT<->SERVER之间数据传输的基本TLV协议格式  
+  * proc  
+  服务器进程之间的通信接口，封装了proc_bridge的go包，并提供了相应的API  
+
+* **PIC**  
+ 这个是图片 不用鸟
+
+* **PROC_BRIDGE**  
+  整合了https://github.com/nmsoccer/proc_bridge 里的proc_bridge组件，其中sgame是为该框架特有的目录，里面主要提供了bridge.cfg配置文件用于配置proc_bridge通信  
+  
+* **PROTO**   
+  这里用于定制服务器之间，客户端与服务器之间的协议
+  * cs 
+  这里制定客户端与服务器之间的通信协议，使用JSON格式。提供了相应的api.go来进行序列&反序列化  
+  * ss
+  这里制定服务器之间的传输通信协议，使用protobuf3格式。提供了相应的api.go来进行序列&反序列化  
+  
+* **SERVERS**  
+  这里提供了框架的核心业务进程和部署工具  
+  * comm  
+  服务器进程所依赖的公共库文件，包括用于tcp连接的tcp_serv.go;用于redis通信的redis.go等  
+  * conn_serv  
+  用于维护客户端连接的接入管理进程，使用tcp协议接入，为每个客户端连接部署一个协程来进行管理。进程main文件为conn_serv.go
+    * conn_serv/lib  
+  用于保存conn_serv进程使用的库文件  
+  
+  * logic_serv
+  用于负责处理游戏主要逻辑的业务进程。进程main文件为logic_serv.go
+    * logic_serv/lib  
+  用于保存logic_serv进程使用的库文件  
+    * logic_serv/table  
+  业务进程经常使用的资源文件，由excel定义转化为json格式存储  
+    * logic_serv/table_desc
+  用于描述业务进程所使用资源文件(json格式)的go文件模板  
+  
+  * db_serv  
+  用于负责框架与redis数据库的读写进程。进程main文件为db_serv.go
+    * db_serv/lib  
+  用于保存db_serv进程使用的库文件  
+  
+    * manage_serv  
+  用于负责管理各具体业务进程的管理进程。进程main文件为manage_serv.go
+    * manage_serv/lib  
+  用于保存manage_serv进程使用的库文件 
+    * manage_serv/html_tmpl  
+  用于管理页面的模板文件  
+  
+* **SPUSH** 
+之前介绍过的SPUSH文件部署工具，其中tmpl用于各业务进程配置所使用的模板  
+
+* **xls_conv**
+用于业务进程所使用的资源转换工具，将excel文件转换为相关的json文件。具体使用可以参考https://github.com/nmsoccer/xlsconv  
+
+### 更多说明  
+更多介绍请参阅页面
