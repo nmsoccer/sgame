@@ -16,20 +16,21 @@ const (
     REPORT_PROTO_CONN_NUM = 10003 //server connection number.
     REPORT_PROTO_SYNC_SERVER = 10004 //sync basic server information
     REPORT_PROTO_SERVER_STOP = 10005 //server stop time
-    REPORT_PROTO_CMD_RELOAD = 10006 //cmd to reload cfg
-    REPORT_PROTO_RELOAD_RSP = 10007 //reload rsp
+    REPORT_PROTO_CMD_REQ = 10006 //cmd to reload cfg
+    REPORT_PROTO_CMD_RSP = 10007 //reload rsp
 
-    //Reload Stat
-	RELOAD_STAT_NONE = ""
-	RELOAD_STAT_ING = "ing"
-	RELOAD_STAT_SUCCESS = "done"
-	RELOAD_STAT_FAIL = "fail"
-	RELOAD_STAT_NOP = "nop" //no operation
+    //Cmd Stat
+	CMD_STAT_NONE = ""
+	CMD_STAT_ING = "ing"
+	CMD_STAT_SUCCESS = "done"
+	CMD_STAT_FAIL = "fail"
+	CMD_STAT_NOP = "nop" //no operation
 
 	//Reload Cmd
-	RELOAD_CMD_NONE = ""
-	RELOAD_CMD_CFG = "reload_cfg"
-    RELOAD_CMD_TAB = "reload_table"
+	CMD_CMD_NONE = ""
+	CMD_RELOAD_CFG = "reload_cfg"
+    CMD_RELOAD_TAB = "reload_table"
+    CMD_STOP_SERVER = "stop_server"
 
 )
 

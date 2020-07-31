@@ -3,13 +3,18 @@ package lib
 import (
 	"bytes"
 	"compress/flate"
+	"compress/zlib"
 	"io"
 	"sgame/proto/cs"
 	"sgame/proto/ss"
 	"sgame/servers/comm"
 	"time"
-	"compress/zlib"
 )
+
+const (
+	RECV_PKG_LEN = comm.MAX_PKG_PER_RECV
+)
+
 
 type ZlibEnv struct {
 	//for compress
@@ -21,13 +26,32 @@ type ZlibEnv struct {
 	u_zr io.ReadCloser
 }
 
+type PkgBuff struct {
+	//for recve
+	recv_pkgs []*comm.ClientPkg
+	//for send
+	send_pkg comm.ClientPkg
+}
+
+
+
 var m_zenv ZlibEnv;
 var pzenv = &m_zenv;
+
+var pkg_buff PkgBuff;
+
 
 func init() {
   pzenv.c_w = zlib.NewWriter(&pzenv.c_bf); //using default compress level
   pzenv.u_reader = bytes.NewReader(nil);
-  pzenv.u_zr , _ = zlib.NewReader(pzenv.u_reader);
+  pzenv.u_zr , _ = zlib.NewReader(pzenv.u_reader); //here is no log if failed,will new again
+
+  //pkg buff
+  pkg_buff.recv_pkgs = make([]*comm.ClientPkg , RECV_PKG_LEN);
+  for i:=0; i<len(pkg_buff.recv_pkgs); i++ {
+  	pkg_buff.recv_pkgs[i] = new(comm.ClientPkg);
+  }
+
 }
 
 
@@ -36,30 +60,34 @@ func ReadClients(pconfig *Config) int64 {
 	log := pconfig.Comm.Log
 
 	//get results
-	var results []*comm.ClientPkg = pconfig.TcpServ.Recv(pconfig.Comm) //comm.*ClientPkg
+	pkg_num := pconfig.TcpServ.Recv(pconfig.Comm , pkg_buff.recv_pkgs) //comm.*ClientPkg
 
 	//log.Debug("%s get results:%v len:%d" , _func_ , results , len(results));
-	if results == nil || len(results) == 0 {
+	if pkg_num<=0 {
 		return 0
 	}
 
 	start_ts := time.Now().UnixNano()
 	//print
-	for i := 0; i < len(results); i++ {
+	for i := 0; i < pkg_num; i++ {
 		//log.Debug("%s key:%v , type:%d , read:%v", _func_, results[i].ClientKey, results[i].PkgType, results[i].Data)
-		HandleClientPkg(pconfig, results[i])
+		HandleClientPkg(pconfig, pkg_buff.recv_pkgs[i]);
 	}
 
 	//diff
 	diff := time.Now().UnixNano() - start_ts
-	log.Debug("%s cost %dus pkg:%d", _func_, diff/1000, len(results))
+	log.Debug("%s cost %dus pkg:%d", _func_, diff/1000, pkg_num)
 	return diff
 }
 
 func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
 	var _func_ = "<HandleClientPkg>"
 	var gmsg cs.GeneralMsg
+	var err error
+	var new_reader bool = true;
 	log := pconfig.Comm.Log
+
+
 
 	//connection closed pkg
 	if pclient.PkgType == comm.CLIENT_PKG_T_CONN_CLOSED {
@@ -81,17 +109,42 @@ func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
 	//normal pkg
 	//zib uncompress
 	client_data := pclient.Data
-	//before_len := len(client_data);
 	if pconfig.FileConfig.ZlibOn == 1 {
+		new_reader = true;
 		pzenv.u_reader.Reset(pclient.Data);
 		pzenv.u_bf.Reset();
-		err := pzenv.u_zr.(flate.Resetter).Reset(pzenv.u_reader , nil);
-		//r , err := zlib.NewReader(pzenv.u_reader);
-		if err != nil {
-			log.Err("%s reset failed when uncompressing! err:%v c_key:%d" , _func_ , err , pclient.ClientKey);
-			return;
+
+		//try init reader again
+		//init zr again
+		if pzenv.u_zr == nil {
+			pzenv.u_zr , err = zlib.NewReader(pzenv.u_reader);
+			if err != nil {
+				log.Err("%s new reader failed! err:%v" , _func_ , err);
+			}
 		}
-		io.Copy(&pzenv.u_bf , pzenv.u_zr);
+
+
+		//log.Debug("%s u_zr:%v and type:%v" , _func_ , pzenv.u_zr , reflect.TypeOf(pzenv.u_zr));
+		if z , ok := pzenv.u_zr.(flate.Resetter); ok {
+			err := z.Reset(pzenv.u_reader , nil);
+			if err != nil {
+				log.Err("%s reset failed when uncompressing! err:%v c_key:%d" , _func_ , err , pclient.ClientKey);
+			} else {
+				new_reader = false;
+				io.Copy(&pzenv.u_bf, pzenv.u_zr);
+			}
+		}
+		if new_reader {
+			log.Debug("%s new reader" , _func_);
+			pzenv.u_reader.Reset(pclient.Data);
+			pzenv.u_bf.Reset();
+			r , err := zlib.NewReader(pzenv.u_reader);
+			if err != nil {
+				log.Err("%s new reader failed when uncompressing! err:%v c_key:%d" , _func_ , err , pclient.ClientKey);
+				return;
+			}
+			io.Copy(&pzenv.u_bf , r);
+		}
 		client_data = pzenv.u_bf.Bytes();
 		/*
         b := bytes.NewReader(pclient.Data);
@@ -100,11 +153,9 @@ func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
         io.Copy(&out , r);
         client_data = out.Bytes();*/
 	}
-	//after_len := len(client_data);
-    //log.Debug("%s uncompress %d->%d" , _func_ , before_len , after_len);
 
 	//decode msg
-	err := cs.DecodeMsg(client_data, &gmsg)
+	err = cs.DecodeMsg(client_data, &gmsg)
 	if err != nil {
 		log.Err("%s decode msg failed! err:%v", _func_, err)
 		return
@@ -169,7 +220,6 @@ func SendToClient(pconfig *Config, client_key int64, gmsg *cs.GeneralMsg) bool {
 		return false
 	}
 
-	//befor_len := len(enc_data);
 	//zlib
     if pconfig.FileConfig.ZlibOn == 1 {
     	pzenv.c_bf.Reset();
@@ -184,11 +234,10 @@ func SendToClient(pconfig *Config, client_key int64, gmsg *cs.GeneralMsg) bool {
     	w.Close();
     	enc_data =  b.Bytes();*/
 	}
-	//after_len := len(enc_data);
-    //log.Debug("%s compressed %d -> %d" , _func_ , befor_len , after_len);
+
 
 	//make pkg
-	pclient := new(comm.ClientPkg)
+	pclient := &pkg_buff.send_pkg;
 	pclient.PkgType = comm.CLIENT_PKG_T_NORMAL;
 	pclient.ClientKey = client_key
 	pclient.Data = enc_data
@@ -196,7 +245,7 @@ func SendToClient(pconfig *Config, client_key int64, gmsg *cs.GeneralMsg) bool {
 	//Send
 	ret := pconfig.TcpServ.Send(pconfig.Comm, pclient)
 	if ret < 0 {
-		log.Err("%s send to client ret:%d len:%d data:%v ", _func_, ret, len(enc_data), string(enc_data))
+		log.Err("%s send to client ret:%d len:%d  ", _func_, ret, len(enc_data))
 		return false;
 	}
 	return true

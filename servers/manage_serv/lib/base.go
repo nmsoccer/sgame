@@ -29,6 +29,7 @@ type Config struct {
 	ProcId     int
 	ProcName   string
 	ConfigFile string
+	Daemon bool
 	FileConfig *FileConfig
 	Comm       *comm.CommConfig
 	WatchMap   map[int]*WatchClient
@@ -43,7 +44,9 @@ type Config struct {
 func CommSet(pconfig *Config) bool {
 	var _func_ = "<CommSet>"
 	//daemonize
-	comm.Daemonize()
+	if pconfig.Daemon {
+		comm.Daemonize()
+	}
 
 	//file config
 	pconfig.FileConfig = new(FileConfig)
@@ -69,9 +72,9 @@ func CommSet(pconfig *Config) bool {
 	return true
 }
 
-//Self Proc Setting
-func SelfSet(pconfig *Config) bool {
-	var _func_ = "<SelfSet>"
+//Local Proc Setting
+func LocalSet(pconfig *Config) bool {
+	var _func_ = "<LocalSet>"
 	log := pconfig.Comm.Log
 
 	//parse client
@@ -155,6 +158,16 @@ func ServerStart(pconfig *Config) {
 	}
 }
 
+//After ReLoad Config If Need Handle
+func AfterReLoadConfig(pconfig *Config , old_config *FileConfig , new_config *FileConfig)  {
+	var _func_ = "<AfterReLoadConfig>";
+	log := pconfig.Comm.Log;
+
+    log.Info("%s finish" , _func_);
+	return;
+}
+
+
 /*----------------Static Func--------------------*/
 //each ticker
 func handle_tick(pconfig *Config) {
@@ -162,6 +175,7 @@ func handle_tick(pconfig *Config) {
 }
 
 func handle_info(pconfig *Config) {
+	var _func_ = "<handle_info>"
 	log := pconfig.Comm.Log
 	select {
 	case m := <-pconfig.Comm.ChInfo:
@@ -170,8 +184,15 @@ func handle_info(pconfig *Config) {
 			ServerExit(pconfig)
 		case comm.INFO_USR1:
 			log.Info(">>reload config!")
-			comm.LoadJsonFile(pconfig.ConfigFile, pconfig.FileConfig, pconfig.Comm)
-			ParseClientList(pconfig);
+			var new_config FileConfig;
+			ret := comm.LoadJsonFile(pconfig.ConfigFile , &new_config , pconfig.Comm);
+			if !ret {
+				log.Err("%s reload config failed!" , _func_)
+			} else {
+				AfterReLoadConfig(pconfig , pconfig.FileConfig , &new_config);
+				*(pconfig.FileConfig) = new_config;
+				ParseClientList(pconfig);
+			}
 		case comm.INFO_USR2:
 			log.Info(">>info usr2")
 		default:

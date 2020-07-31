@@ -263,7 +263,7 @@ func cb_user_login_get_info(comm_config *comm.CommConfig, result interface{}, cb
 			return
 		}
 
-		log.Debug("%s get user_Info success! user:%s detail:%v", _func_, preq.Name, sm)
+		//log.Debug("%s get user_Info success! user:%s detail:%v", _func_, preq.Name, sm)
 		//Get User Info
 		prsp.UserInfo = new(ss.UserInfo)
 		prsp.UserInfo.BasicInfo = new(ss.UserBasic)

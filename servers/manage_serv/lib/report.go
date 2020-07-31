@@ -21,9 +21,9 @@ type PeerStat struct {
 	StopTime  time.Time
 	ConnStr   string
 	ConnNum   int
-	ReloadTime  time.Time //latest reload time
-	ReloadStat string //refer RELOAD_STAT_XX
-	ReloadCmd  string
+	CmdTime  time.Time //latest cmd time
+	CmdStat string //refer CMD_STAT_XX
+	CmdInfo  string
 	MonitorInfo template.HTML //monitor info
 }
 
@@ -260,9 +260,9 @@ func (precver *ReportRecver) handle_msg(pmsg *comm.ReportMsg, peer_addr *net.UDP
 		pstat.StartTime = time.Unix(pmsg.IntValue, 0)
 		if pstat.StartTime.After(pstat.StopTime) { //new start clear xx
 			pstat.StopTime = time.Unix(0, 0)
-			pstat.ReloadTime = time.Unix(0 , 0)
-			pstat.ReloadStat = comm.RELOAD_STAT_NONE
-			pstat.ReloadCmd = comm.RELOAD_CMD_NONE
+			pstat.CmdTime = time.Unix(0 , 0)
+			pstat.CmdStat = comm.CMD_STAT_NONE
+			pstat.CmdInfo = comm.CMD_CMD_NONE
 		}
 	case comm.REPORT_PROTO_SERVER_HEART: //report hearbeat
 		//log.Debug("%s <%d:%s> heart:%v" , _func_ , pwatch.ProcId , pwatch.ProcName , pmsg.IntValue);
@@ -285,15 +285,15 @@ func (precver *ReportRecver) handle_msg(pmsg *comm.ReportMsg, peer_addr *net.UDP
 	case comm.REPORT_PROTO_SERVER_STOP: //report server stop time
 		log.Info("%s <%d:%s> stop:%v", _func_, pwatch.ProcId, pwatch.ProcName, pmsg.IntValue)
 		pstat.StopTime = time.Unix(pmsg.IntValue, 0)
-	case comm.REPORT_PROTO_RELOAD_RSP: //report from reload cfg
-	    log.Info("%s <%d:%s> reload_rsp. time:%d ret:%s" , _func_ , pwatch.ProcId , pwatch.ProcName , pmsg.IntValue ,
+	case comm.REPORT_PROTO_CMD_RSP: //report from cmd
+	    log.Info("%s <%d:%s> cmd_rsp. time:%d ret:%s" , _func_ , pwatch.ProcId , pwatch.ProcName , pmsg.IntValue ,
 	    	pmsg.StrValue);
 	    //check time ts must match
-	    if pwatch.Stat.ReloadTime.Unix() == pmsg.IntValue {
-	    	log.Info("reload time matched");
-	    	pwatch.Stat.ReloadStat = pmsg.StrValue;
+	    if pwatch.Stat.CmdTime.Unix() == pmsg.IntValue {
+	    	log.Info("cmd time matched");
+	    	pwatch.Stat.CmdStat = pmsg.StrValue;
 		} else {
-			log.Err("%s reload ts not match! %d vs %d" , _func_ , pwatch.Stat.ReloadTime.Unix() , pmsg.IntValue);
+			log.Err("%s cmd ts not match! %d vs %d" , _func_ , pwatch.Stat.CmdTime.Unix() , pmsg.IntValue);
 		}
 
 	case comm.REPORT_PROTO_MONITOR:

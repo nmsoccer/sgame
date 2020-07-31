@@ -12,12 +12,12 @@ import (
 )
 
 var buff_len int = 1024;
-var exit_ch chan bool;
+//var exit_ch chan bool;
 
 //flag
-var host = flag.String("h", "127.0.0.1", "server ip");
-var port = flag.Int("p", 0, "server port");
-var option = flag.Int("t", 0, "option 1:echo 2:stat");
+//var host = flag.String("h", "127.0.0.1", "server ip");
+//var port = flag.Int("p", 0, "server port");
+//var option = flag.Int("t", 0, "option 1:echo 2:stat");
 
 func RecvClient(conn *net.TCPConn) {
 	read_buff := make([]byte , 1024);

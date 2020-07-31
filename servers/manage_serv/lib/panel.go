@@ -320,7 +320,7 @@ func (pserv *PanelServ) cmd_handle(w http.ResponseWriter , r *http.Request) {
 	}
 
 	//operation
-	if operation != comm.RELOAD_CMD_CFG && operation != comm.RELOAD_CMD_TAB {
+	if operation != comm.CMD_RELOAD_CFG && operation != comm.CMD_RELOAD_TAB  && operation != comm.CMD_STOP_SERVER{
 		log.Err("%s illegal operation:%s" , _func_ , operation);
 		fmt.Fprintf(w , "Operation illegal!");
 		return;
@@ -347,10 +347,10 @@ func (pserv *PanelServ) cmd_handle(w http.ResponseWriter , r *http.Request) {
 
 		//send msg
 		curr_ts := time.Now().Unix();
-		pconfig.WatchMap[proc_id].Stat.ReloadTime = time.Now();
-		pconfig.WatchMap[proc_id].Stat.ReloadStat = comm.RELOAD_STAT_ING;
-		pconfig.WatchMap[proc_id].Stat.ReloadCmd = operation;
-        pserv.report_cmd(proc_id , comm.REPORT_PROTO_CMD_RELOAD , curr_ts , operation , nil);
+		pconfig.WatchMap[proc_id].Stat.CmdTime = time.Now();
+		pconfig.WatchMap[proc_id].Stat.CmdStat = comm.CMD_STAT_ING;
+		pconfig.WatchMap[proc_id].Stat.CmdInfo = operation;
+        pserv.report_cmd(proc_id , comm.REPORT_PROTO_CMD_REQ , curr_ts , operation , nil);
 	}
 
 

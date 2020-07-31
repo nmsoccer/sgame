@@ -66,11 +66,16 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp) {
 		} else {
 			psub.Basic.Sex = 0
 		}
+
+		//blob
+		pblob := prsp.UserInfo.GetBlobInfo();
+
+
 		//detail
 		psub.Detail.Exp = prsp.UserInfo.BlobInfo.Exp;
 		psub.Detail.Depot = new(cs.UserDepot);
 		psub.Detail.Depot.Items = make(map[int64]*cs.Item);
-		if prsp.UserInfo.BlobInfo.Depot.Items != nil {
+		if pblob!=nil && pblob.GetDepot()!=nil && pblob.GetDepot().GetItems()!= nil {
 			for instid, pitem := range prsp.UserInfo.BlobInfo.Depot.Items {
 				psub.Detail.Depot.Items[instid] = new(cs.Item);
 				psub.Detail.Depot.Items[instid].Instid = instid;

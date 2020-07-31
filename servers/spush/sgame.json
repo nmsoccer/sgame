@@ -6,10 +6,10 @@
   "remote_pass":"****" ,
   
   "procs":[
-    {"name":"conn_serv-1" , "bin":["../conn_serv/conn_serv"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group1/conn_serv/" , "copy_cfg":1 , "cmd":"./conn_serv -N sgame -p 10001 -P conn_serv-1 -f conf/conn_serv.json"},
-	{"name":"logic_serv-1" , "bin":["../logic_serv/logic_serv" , "../logic_serv/table" , "../logic_serv/table_desc"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group1/logic_serv/" , "copy_cfg":1 , "cmd":"./logic_serv -N sgame -p 20001 -P logic_serv-1 -f conf/logic_serv.json"},        
-    {"name":"db_logic_serv-1" ,   "bin":["../db_serv/db_serv"] , "host":"" , "host_dir":"/home/nmsoccer/sg/group1/db_serv/" , "copy_cfg":1 , "cmd":"./db_serv -N sgame -p 30001 -P db_logic_serv-1 -f conf/db_serv.json"},
-    {"name":"manage_serv-1" , "bin":["../manage_serv/manage_serv" , "../manage_serv/html_tmpl/"] , "host":"" , "host_dir":"/home/nmsoccer/sg/manage/manage_serv-1/" , "copy_cfg":1 , "cmd":"./manage_serv -N sgame -P manage_serv-1 -f conf/manage_serv.json"}	
+    {"name":"conn_serv-1" , "bin":["../conn_serv/conn_serv"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group1/conn_serv/" , "copy_cfg":1 , "cmd":"./conn_serv -N sgame -p 10001 -P conn_serv-1 -f conf/conn_serv.json -D"},
+	{"name":"logic_serv-1" , "bin":["../logic_serv/logic_serv" , "../logic_serv/table" , "../logic_serv/table_desc"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group1/logic_serv/" , "copy_cfg":1 , "cmd":"./logic_serv -N sgame -p 20001 -P logic_serv-1 -f conf/logic_serv.json -D"},        
+    {"name":"db_logic_serv-1" ,   "bin":["../db_serv/db_serv"] , "host":"" , "host_dir":"/home/nmsoccer/sg/group1/db_serv/" , "copy_cfg":1 , "cmd":"./db_serv -N sgame -p 30001 -P db_logic_serv-1 -f conf/db_serv.json -D"},
+    {"name":"manage_serv-1" , "bin":["../manage_serv/manage_serv" , "../manage_serv/html_tmpl/"] , "host":"" , "host_dir":"/home/nmsoccer/sg/manage/manage_serv-1/" , "copy_cfg":1 , "cmd":"./manage_serv -N sgame -P manage_serv-1 -f conf/manage_serv.json -D"}	
   ],
 
   "proc_cfgs":[

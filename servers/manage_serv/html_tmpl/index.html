@@ -10,6 +10,7 @@ index
   Operation <select name="operation">
   <option value="reload_cfg">reload(cfg)</option>
   <option value="reload_table">reload(table)</option>
+  <option value="stop_server">stop(server)</option>
   </select>  
   <input type="submit" value="submit" /> <br/>
 </form>
@@ -22,7 +23,7 @@ Start: {{ if (le .StartTime.Unix 0) }} <font color="red">{{ 0 }}</font> {{ else 
 Heart: {{ if (le .HeartBeat.Unix 0) }} <font color="red">{{ 0 }}</font> {{ else }} <font color="green">{{ .HeartBeat.Format "2006-01-02 15:04:05" }}</font> {{ end }}
 Stop: {{ if (le .StopTime.Unix 0) }} <font color="green">{{ 0 }}</font> {{ else }} <font color="red">{{ .StopTime.Format "2006-01-02 15:04:05" }}</font> {{ end }}
 {{ if (ne .ConnStr "") }} {{ .ConnStr }}: <font color="green">{{ .ConnNum }}</font> {{ end }}
-Reload: {{ if (le .ReloadTime.Unix 0) }} {{ 0 }} {{ else }} <font color="green">{{ .ReloadTime.Format "2006-01-02 15:04:05" }} ({{ .ReloadCmd }})</font> {{ if (eq .ReloadStat "ing") }} <font color="red">[{{ .ReloadStat }}]</font>{{ else }} <font color="green">[{{ .ReloadStat }}]</font>{{ end }} {{ end }}
+Command: {{ if (le .CmdTime.Unix 0) }} <font color="green">{{ print "\"\"" }}</font> {{ else }} <font color="green">{{ .CmdTime.Format "2006-01-02 15:04:05" }} ({{ .CmdInfo }})</font> {{ if (eq .CmdStat "ing") }} <font color="red">[{{ .CmdStat }}]</font>{{ else }} <font color="green">[{{ .CmdStat }}]</font>{{ end }} {{ end }}
 <br/>
 {{ end}}
 {{ end}}

@@ -23,6 +23,7 @@ type Config struct {
 	ProcId     int
 	ProcName   string
 	ConfigFile string
+	Daemon bool
 	FileConfig *FileConfig
 	Comm       *comm.CommConfig
 	TcpServ    *comm.TcpServ
@@ -35,7 +36,9 @@ type Config struct {
 func CommSet(pconfig *Config) bool {
 	var _func_ = "<CommSet>"
 	//daemonize
-	comm.Daemonize()
+	if pconfig.Daemon {
+		comm.Daemonize()
+	}
 
 	//file config
 	pconfig.FileConfig = new(FileConfig)
@@ -66,9 +69,9 @@ func CommSet(pconfig *Config) bool {
 	return true
 }
 
-//Self Proc Setting
-func SelfSet(pconfig *Config) bool {
-	var _func_ = "<SelfSet>"
+//Local Proc Setting
+func LocalSet(pconfig *Config) bool {
+	var _func_ = "<LocalSet>"
 	log := pconfig.Comm.Log
 
 	//start tcp serv to listen clients
@@ -159,8 +162,23 @@ func ServerStart(pconfig *Config) {
 	}
 }
 
+//After ReLoad Config If Need Handle
+func AfterReLoadConfig(pconfig *Config , old_config *FileConfig , new_config *FileConfig)  {
+	var _func_ = "<AfterReLoadConfig>";
+	log := pconfig.Comm.Log;
+
+    //Set MaxConn
+    if old_config.MaxConn != new_config.MaxConn {
+    	log.Info("%s reset max_conn %d-->%d" , _func_ , old_config.MaxConn , new_config.MaxConn);
+		pconfig.TcpServ.SetMaxConn(new_config.MaxConn);
+	}
+	return;
+}
+
+
 /*----------------Static Func--------------------*/
 func handle_info(pconfig *Config) {
+	var _func_ = "<handle_info>"
 	log := pconfig.Comm.Log
 	select {
 	case m := <-pconfig.Comm.ChInfo:
@@ -169,9 +187,19 @@ func handle_info(pconfig *Config) {
 			ServerExit(pconfig)
 		case comm.INFO_USR1:
 			log.Info(">>reload config!")
-			comm.LoadJsonFile(pconfig.ConfigFile, pconfig.FileConfig, pconfig.Comm)
+			var new_config FileConfig;
+			ret := comm.LoadJsonFile(pconfig.ConfigFile , &new_config , pconfig.Comm);
+			if !ret {
+				log.Err("%s reload config failed!" , _func_)
+			} else {
+				AfterReLoadConfig(pconfig , pconfig.FileConfig , &new_config);
+				*(pconfig.FileConfig) = new_config;
+			}
 		case comm.INFO_USR2:
 			log.Info(">>info usr2")
+		case comm.INFO_PPROF:
+			log.Info(">>profiling");
+			comm.DefaultHandleProfile(pconfig.Comm);
 		default:
 			pconfig.Comm.Log.Info("unknown msg")
 		}

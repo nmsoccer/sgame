@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	lnet "sgame/lib/net"
 	"sgame/proto/cs"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -22,24 +22,23 @@ const (
 	CMD_REG    = "reg"
 
 	BUFF_LEN = (10 * 1024)
-
-	METHOD_INTERFACE = 1
-	METHOD_COMMAND = 2
 )
 
 var cmd_map map[string]string
 var zlib_enalbe = true
-//var buff_len int = 1024;
 var exit_ch chan bool = make(chan bool , 1)
+var wg sync.WaitGroup
+
 
 //flag
 var help = flag.Bool("h" , false , "show help")
 var host *string = flag.String("a", "127.0.0.1", "server ip")
 var port = flag.Int("p", 0, "server port")
-var method = flag.Int("m", 0, "method 1:interace 2:command")
 var cmd = flag.String("c", "", "cmd")
 var keep = flag.Int("k" , 0 , "keepalive seconds if method=2")
 var quiet = flag.Bool("q" , false , "quiet if method=2");
+var total_count     = flag.Int("N" , 0 , "Total Number of requests");
+var concurrent_count    = flag.Int("C" , 0 , "cocurrent per second")
 
 func init() {
 	cmd_map = make(map[string]string)
@@ -64,7 +63,7 @@ func show_cmd() {
 	}
 }
 
-func RecvPkg(conn *net.TCPConn) {
+func RecvPkg(conn *net.TCPConn) bool {
 	read_buff := make([]byte, BUFF_LEN)
 	for {
 		time.Sleep(10 * time.Millisecond)
@@ -74,7 +73,7 @@ func RecvPkg(conn *net.TCPConn) {
 		n, err := conn.Read(read_buff)
 		if err != nil {
 			fmt.Printf("read failed! err:%v\n", err)
-			os.Exit(0);
+			return false;
 		}
 
 		//unpack
@@ -88,11 +87,7 @@ func RecvPkg(conn *net.TCPConn) {
 			r , err := zlib.NewReader(b);
 			if err != nil {
 				fmt.Printf("uncompress data failed! err:%v" , err);
-				if *method == METHOD_COMMAND {
-					exit_ch <- false;
-					return;
-				}
-				continue;
+				return false;
 			}
 			io.Copy(&out , r);
 			pkg_data = out.Bytes();
@@ -104,11 +99,7 @@ func RecvPkg(conn *net.TCPConn) {
 		err = cs.DecodeMsg(pkg_data, &gmsg)
 		if err != nil {
 			fmt.Printf("decode failed! err:%v\n", err)
-			if *method == METHOD_COMMAND {
-				exit_ch <- false;
-				return;
-			}
-			continue
+			return false;
 		}
 
 		//switch rsp
@@ -118,11 +109,7 @@ func RecvPkg(conn *net.TCPConn) {
 			if ok {
 				curr_ts := time.Now().UnixNano() / 1000
 				v_print("ping:%v ms\n", (curr_ts-prsp.TimeStamp)/1000)
-
-				if *method == METHOD_COMMAND {
-					exit_ch <- true;
-					return;
-				}
+				return true;
 			}
 		case cs.CS_PROTO_LOGIN_RSP:
 			prsp, ok := gmsg.SubMsg.(*cs.CSLoginRsp)
@@ -131,49 +118,38 @@ func RecvPkg(conn *net.TCPConn) {
 					v_print("login result:%d name:%s\n", prsp.Result, prsp.Name)
 					v_print("uid:%v sex:%d addr:%s level:%d Exp:%d ItemCount:%d\n", prsp.Basic.Uid, prsp.Basic.Sex, prsp.Basic.Addr,
 						prsp.Basic.Level, prsp.Detail.Exp , prsp.Detail.Depot.ItemsCount)
-                    for instid , pitem := range prsp.Detail.Depot.Items {
-                    	v_print("[%d] res:%d count:%d attr:%d\n" , instid , pitem.ResId , pitem.Count , pitem.Attr);
+					for instid , pitem := range prsp.Detail.Depot.Items {
+						v_print("[%d] res:%d count:%d attr:%d\n" , instid , pitem.ResId , pitem.Count , pitem.Attr);
 					}
 				}
-				if *method == METHOD_COMMAND {
-					exit_ch <- true;
-					return;
-				}
+				return true;
 			}
 		case cs.CS_PROTO_LOGOUT_RSP:
 			prsp, ok := gmsg.SubMsg.(*cs.CSLogoutRsp)
 			if ok {
 				v_print("logout result:%d msg:%s\n", prsp.Result, prsp.Msg)
-
-				if *method == METHOD_COMMAND {
-					exit_ch <- true;
-					return;
-				}
+                return true;
 			}
 		case cs.CS_PROTO_REG_RSP:
 			prsp , ok := gmsg.SubMsg.(*cs.CSRegRsp)
 			if ok {
 				v_print("reg result:%d name:%s\n", prsp.Result, prsp.Name);
-
-				if *method == METHOD_COMMAND {
-					exit_ch <- true;
-					return;
-				}
+                return true;
 			}
 		default:
 			fmt.Printf("illegal proto:%d\n", gmsg.ProtoId)
+			return false;
 		}
 
-		if *method == METHOD_COMMAND {
-			exit_ch <- false;
-			return;
-		}
 
+        break;
 	}
+
+	return false;
 }
 
 //send pkg to server
-func SendPkg(conn *net.TCPConn, cmd string) {
+func SendPkg(conn *net.TCPConn, cmd string) bool {
 	var gmsg cs.GeneralMsg
 	var err error
 	var enc_data []byte
@@ -196,7 +172,7 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 	case CMD_LOGIN:
 		if len(args) != 3 {
 			show_cmd();
-			return;
+			return false;
 		}
 		gmsg.ProtoId = cs.CS_PROTO_LOGIN_REQ
 		psub := new(cs.CSLoginReq)
@@ -215,7 +191,7 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 	case CMD_REG: // register <name> <pass> <sex:1|2> <addr>
 		if len(args) != 5 {
 			show_cmd();
-			return;
+			return false;
 		}
 		gmsg.ProtoId = cs.CS_PROTO_REG_REQ
 		psub := new(cs.CSRegReq)
@@ -229,14 +205,14 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		gmsg.SubMsg = psub;
 	default:
 		fmt.Printf("illegal cmd:%s\n", cmd)
-		return
+		return false
 	}
 
 	//encode
 	enc_data, err = cs.EncodeMsg(&gmsg)
 	if err != nil {
 		fmt.Printf("encode %s failed! err:%v\n", cmd, err)
-		return
+		return false
 	}
 
 	//compress
@@ -252,17 +228,63 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 	pkg_len := lnet.PackPkg(pkg_buff, enc_data, 0)
 	if pkg_len < 0 {
 		fmt.Printf("pack cmd:%s failed!\n", cmd)
-		return
+		return false
 	}
 
 	//send
 	_, err = conn.Write(pkg_buff[:pkg_len])
 	if err != nil {
 		fmt.Printf("send cmd pkg failed! cmd:%s err:%v\n", cmd, err)
-	} else {
-		v_print("send cmd:%s success! pkg:%v pkg_len:%d json:%s\n", cmd, pkg_buff[:pkg_len], pkg_len, string(enc_data))
+		return false
 	}
+	v_print("send cmd:%s success! pkg:%v pkg_len:%d \n", cmd, pkg_buff[:pkg_len], pkg_len)
+	return true;
 }
+
+//single case
+func TestCase(idx int , host string , port int , cmd string) {
+	start_us := time.Now().UnixNano()/1000;
+	server_addr := host + ":" + strconv.Itoa(port)
+	//connect
+	tcp_addr, err := net.ResolveTCPAddr("tcp4", server_addr)
+	if err != nil {
+		fmt.Printf("[%d] resolve addr:%s failed! err:%s\n", idx , server_addr, err)
+		return
+	}
+
+	conn, err := net.DialTCP("tcp4", nil, tcp_addr)
+	if err != nil {
+		fmt.Printf("[%d] connect %s failed! err:%v\n", idx , server_addr, err)
+		return
+	}
+	defer conn.Close()
+
+
+	//send pkg
+	ok := SendPkg(conn , cmd);
+	if !ok {
+		fmt.Printf("[%d] send pkg failed!\n" , idx);
+		return
+	}
+
+
+    //recv pkg
+    ok = RecvPkg(conn);
+	end_us := time.Now().UnixNano()/1000;
+    if !ok {
+    	//fmt.Printf("[%d] recv pkg failed!\n" , idx);
+		fmt.Printf("cmd:-1|start:%d|end:%d|cost:%d\n" , start_us , end_us , (end_us-start_us));
+	}
+
+    //success
+	fmt.Printf("cmd:0|start:%d|end:%d|cost:%d\n" , start_us , end_us , (end_us-start_us));
+	//keep alive
+	time.Sleep(time.Duration(*keep) * time.Second);
+	wg.Done()
+}
+
+
+
 
 func main() {
 	defer func() {
@@ -271,7 +293,7 @@ func main() {
 		}
 	}()
 	flag.Parse()
-	if *port <= 0 || (*method != METHOD_INTERFACE && *method != METHOD_COMMAND) {
+	if *port <= 0 || *total_count<=0 || *concurrent_count<=0{
 		flag.PrintDefaults()
 		show_cmd()
 		return
@@ -281,78 +303,18 @@ func main() {
 		return;
 	}
 
-	v_print("start client ...")
-	start_us := time.Now().UnixNano()/1000;
-	//server_addr := "localhost:18909";
-	server_addr := *host + ":" + strconv.Itoa(*port)
+	wg.Add(*total_count);
+	sleep_us := time.Duration(1000000 / *concurrent_count);
+	fmt.Errorf("start client ... slee_us:%d" , sleep_us);
 
-	//init
-	//exit_ch = make(chan bool, 1)
-
-	//connect
-	tcp_addr, err := net.ResolveTCPAddr("tcp4", server_addr)
-	if err != nil {
-		fmt.Printf("resolve addr:%s failed! err:%s\n", server_addr, err)
-		return
+	for i:=0; i<*total_count; i++ {
+		time.Sleep(sleep_us * time.Microsecond);
+		go TestCase(i , *host , *port , *cmd);
 	}
 
-	conn, err := net.DialTCP("tcp4", nil, tcp_addr)
-	if err != nil {
-		fmt.Printf("connect %s failed! err:%v\n", server_addr, err)
-		return
-	}
-	defer conn.Close()
+	//start_us := time.Now().UnixNano()/1000;
+	//end_us := time.Now().UnixNano()/1000;
 
-	rs := make([]byte, 128)
-	//pack_buff := make([]byte , 128);
-	//read
-	go RecvPkg(conn)
-
-	//check option
-	switch *method {
-	case METHOD_INTERFACE:
-		for {
-			rs = rs[:cap(rs)]
-			fmt.Printf("please input:>>")
-			n, _ := os.Stdin.Read(rs)
-			rs = rs[:n-1] //trip last \n
-
-			if string(rs) == "exit" {
-				fmt.Println("byte...")
-				exit_ch <- true
-				break
-			}
-
-			//pkg_len := lnet.PackPkg(pack_buff, rs , (uint8)(*option));
-			//fmt.Printf("read %d bytes and packed:%d\n", n , pkg_len);
-			//n , _ = conn.Write(pack_buff[:pkg_len]);
-			SendPkg(conn, string(rs))
-			time.Sleep(50 * time.Millisecond)
-		}
-
-	case METHOD_COMMAND:
-		if len(*cmd) <= 0 {
-			flag.PrintDefaults();
-			show_cmd()
-			break
-		}
-		//start_us := time.Now().UnixNano()/1000;
-		SendPkg(conn, *cmd)
-		//time.Sleep(2 * time.Second)
-		v := <- exit_ch;
-		end_us := time.Now().UnixNano()/1000;
-		if v { //success
-			fmt.Printf("cmd:0|start:%d|end:%d|cost:%d\n" , start_us , end_us , (end_us-start_us));
-		} else {
-			fmt.Printf("cmd:-1|start:%d|end:%d|cost:%d\n" , start_us , end_us , (end_us-start_us));
-		}
-
-		//keep alive
-		time.Sleep(time.Duration(*keep) * time.Second);
-
-	default:
-		fmt.Printf("option:%d nothing tod!\n", *method)
-	}
-
-	return
+    wg.Wait();
+	v_print("press finish!\n");
 }

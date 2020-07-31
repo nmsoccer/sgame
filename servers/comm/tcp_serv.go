@@ -2,6 +2,7 @@ package comm
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net"
 	lnet "sgame/lib/net"
@@ -39,7 +40,9 @@ const (
 
 	//R&W TIMEOUT
 	CLIENT_RW_TIMEOUT = 2                    //ms
-	CLIENT_RW_CACHE   = (2 * MAX_QUEUE_DATA) //tcp_client.snd_cache & tcp_client.recv_cache
+	//RW CACHE
+	CLIENT_RW_CACHE_SHRINK_FACTOR = 4       //if cache_size / base_size > factor will shrink memory
+	CLIENT_RW_CACHE_BASE = (10 * 1024);          //base 10K
 )
 
 /*Caller Proc <-> tcp_serv */
@@ -64,6 +67,7 @@ type tcp_client struct {
 	server_close bool         //if connection closed , true:server close connection; false:client close connection
 	conn         *net.TCPConn //connection
 	index        int          //index in client-array
+	read_cache []byte     //each read into buff = cache_base
 	recv_cache   []byte
 	snd_cache    []byte
 	//recv_queue chan *queue_data //client -> server
@@ -81,8 +85,23 @@ type TcpServ struct {
 	loop_index  int
 	recv_queue  chan *queue_data //client -> server
 	snd_queue   chan *queue_data //server -> client
-	key_map     map[int64]int    //client_key <-> client_idx
+	key_map     map[int64]int    //client_key <-> client_idx 多协程直接读写map unsafe , 会crash掉 如果不能保证则需要使用sync.Map
+
 }
+
+//temp save *queue_data
+var queue_pool sync.Pool;
+//var queue_pool *TinyPool;
+
+
+func init() {
+	//queue_pool = NewTinyPool(2000 , func() interface{} {return new(queue_data)});
+	queue_pool.New = func() interface{} {
+		return new(queue_data)
+	}
+}
+
+
 
 //new tcp_serv and start listener serve
 func StartTcpServ(pconfig *CommConfig, addr string, max_conn int) *TcpServ {
@@ -94,10 +113,10 @@ func StartTcpServ(pconfig *CommConfig, addr string, max_conn int) *TcpServ {
 
 	//init
 	pserv.addr = addr
-	pserv.max_conn = max_conn
+	//pserv.max_conn = max_conn
 	pserv.curr_conn = 0
-	pserv.close_ch = make(chan int, pserv.max_conn)
-	pserv.client_list = make([]*tcp_client, pserv.max_conn) //init
+	pserv.close_ch = make(chan int, max_conn)
+	pserv.client_list = make([]*tcp_client, max_conn) //init
 	pserv.exit_ch = make(chan bool, 1)                      //non-block
 	pserv.recv_queue = make(chan *queue_data, SERV_RECV_QUEUE)
 	pserv.snd_queue = make(chan *queue_data, SERV_SND_QUEUE)
@@ -118,10 +137,11 @@ func (pserv *TcpServ) Close(pconfig *CommConfig) {
 	pserv.exit_ch <- true
 }
 
+
 /*read from clients
 @return: nil:read fail or empty; []*ClientPkg read success
 */
-func (pserv *TcpServ) Recv(pconfig *CommConfig) []*ClientPkg {
+func (pserv *TcpServ) Recv(pconfig *CommConfig , pkgs []*ClientPkg) int {
 	var pdata *queue_data
 	var _func_ = "TcpServ.Recv"
 	log := pconfig.Log
@@ -129,16 +149,20 @@ func (pserv *TcpServ) Recv(pconfig *CommConfig) []*ClientPkg {
 
 	//empty
 	if result_len <= 0 {
-		return nil
+		return 0;
 	}
 
 	//init results
 	if result_len > MAX_PKG_PER_RECV { //max pkgs per handle
 		result_len = MAX_PKG_PER_RECV
 	}
-	results := make([]*ClientPkg, result_len)
-	i := 0
+	if result_len > len(pkgs) {
+		result_len = len(pkgs);
+	}
 
+
+	//results := make([]*ClientPkg, result_len)
+	i := 0
 	//fulfill result
 	for {
 		if i >= result_len {
@@ -147,26 +171,28 @@ func (pserv *TcpServ) Recv(pconfig *CommConfig) []*ClientPkg {
 
 		select {
 		case pdata = <-pserv.recv_queue:
-			results[i] = new(ClientPkg)
 			if pdata.info == QUEUE_INFO_NORMAL {
-				results[i].PkgType = CLIENT_PKG_T_NORMAL
+				pkgs[i].PkgType = CLIENT_PKG_T_NORMAL
 			} else if pdata.info == QUEUE_INFO_CLOSE {
 				log.Info("%s [%d] read close connection! key:%v idx:%v", _func_, i, pdata.key, pdata.idx)
-				results[i].PkgType = CLIENT_PKG_T_CONN_CLOSED
+				pkgs[i].PkgType = CLIENT_PKG_T_CONN_CLOSED
 			}
-			//results[i].ClientKey = pserv.client_list[pdata.idx].key;
-			results[i].ClientKey = pdata.key
-			results[i].Data = pdata.data
-		default:
-			//nothing;
+			pkgs[i].ClientKey = pdata.key
+			pkgs[i].Data = pdata.data
+			i++
+			//restore pdata
+			queue_pool.Put(pdata);
+		default: //no data
+			return i;
 		}
 
-		i++
 	}
 
 	//log.Debug("%s recv pkg:%d" , _func_ , result_len);
-	return results
+	return i
 }
+
+
 
 /*Send pkg to client
 @return: -1: failed 0:success
@@ -182,22 +208,36 @@ func (pserv *TcpServ) Send(pconfig *CommConfig, ppkg *ClientPkg) int {
 	}
 
 	if len(ppkg.Data) >= MAX_PKG_LEN {
-		log.Err("%s failed! pkg data overflow! len:%d max:%d idx:%d", _func_, len(ppkg.Data), MAX_PKG_LEN, pserv.key_map[ppkg.ClientKey])
+		log.Err("%s failed! pkg data overflow! len:%d max:%d curr_key:%d", _func_, len(ppkg.Data), MAX_PKG_LEN, ppkg.ClientKey)
 		return -1
 	}
 
 	//check key
+	/*
 	idx  , ok := pserv.key_map[ppkg.ClientKey];
 	if !ok {
 		log.Err("%s client not exist! key:%d" , _func_ , ppkg.ClientKey);
 		return -1;
-	}
+	}*/
 
 	//send
-	pdata := new(queue_data)
+	pv := queue_pool.Get();
+	pdata , ok := pv.(*queue_data);
+	if !ok {
+		log.Debug("%s get fail! new queue_data!" , _func_);
+		pdata = new(queue_data);
+	}
 	pdata.info = QUEUE_INFO_NORMAL
-	pdata.idx = idx;
-	pdata.data = ppkg.Data
+	//pdata.idx = idx; 这里故意不设置idx防止竞争读取kep_map 指导tcp_serv主协程去设置
+	if pdata.data!=nil && cap(pdata.data) >= len(ppkg.Data) {
+		log.Debug("%s reuse pdata.data!" , _func_);
+		pdata.data = pdata.data[:len(ppkg.Data)];
+	} else {
+		log.Debug("%s new pdata.data!" , _func_);
+		pdata.data = make([]byte , len(ppkg.Data));
+	}
+	copy(pdata.data , ppkg.Data);
+	//pdata.data = ppkg.Data
 	pdata.key = ppkg.ClientKey
 	//check pkg type
 	switch ppkg.PkgType {
@@ -218,6 +258,13 @@ func (pserv *TcpServ) GetConnNum() int {
 	return pserv.curr_conn
 }
 
+func (pserv *TcpServ) SetMaxConn(max_conn int) {
+	if max_conn <= 0 {
+		return;
+	}
+	pserv.max_conn = max_conn;
+}
+
 /*--------------------------Static Func----------------------------*/
 /*--------------------------------tcp_server-----------------------------*/
 //generate key
@@ -235,6 +282,12 @@ func tcp_server(pconfig *CommConfig, pserv *TcpServ) {
 	var _func_ = "<tcp_server>"
 	var log = pconfig.Log
 	log.Info("%s starting...", _func_)
+	defer func() {
+		if err := recover(); err != nil {
+			pconfig.Log.Err("tcp_server.serve panic! err:%v" , err);
+			fmt.Printf("tcp_server.serve panic! err:%v\n" , err);
+		}
+	}()
 	//addr
 	serv_addr, err := net.ResolveTCPAddr("tcp4", pserv.addr)
 	if err != nil {
@@ -338,16 +391,24 @@ func (pserv *TcpServ) close_clients(pconfig *CommConfig) {
 }
 
 func close_connection(pconfig *CommConfig, conn *net.TCPConn) {
-	conn.Close()
+	if conn != nil {
+		conn.Close()
+	}
 }
 
 //add a client to tcp_serv
 func (pserv *TcpServ) add_client(pconfig *CommConfig, conn *net.TCPConn) {
 	var _func_ = "<tcp_serv.add_client>"
 	log := pconfig.Log
+	defer func() {
+		if err := recover(); err != nil{
+			pconfig.Log.Err("tcp_serv.add_client panic! err:%v" , err);
+			fmt.Printf("tcp_serv.add_client failed! err:%v" , err);
+		}
+	}()
 
 	//check conn count
-	if pserv.curr_conn >= pserv.max_conn {
+	if pserv.curr_conn >= len(pserv.client_list) {
 		log.Err("%s fail! connection count:%d reached uplimit!", _func_, pserv.curr_conn)
 		close_connection(pconfig, conn)
 		return
@@ -355,15 +416,15 @@ func (pserv *TcpServ) add_client(pconfig *CommConfig, conn *net.TCPConn) {
 
 	//search an empty index
 	var i = 0
-	pserv.Lock()
-	for i = 0; i < pserv.max_conn; i++ {
+	//pserv.Lock()
+	for i = 0; i < len(pserv.client_list); i++ {
 		if pserv.client_list[i] == nil {
 			break
 		}
 	}
-	pserv.Unlock()
-	if i >= pserv.max_conn {
-		log.Err("%s fail! no empy pos found! curr:%d max:%d", _func_, pserv.curr_conn, pserv.max_conn)
+	//pserv.Unlock()
+	if i >= len(pserv.client_list) {
+		log.Err("%s fail! no empy pos found! curr:%d max:%d", _func_, pserv.curr_conn, len(pserv.client_list))
 		close_connection(pconfig, conn)
 		return
 	}
@@ -381,11 +442,11 @@ func (pserv *TcpServ) add_client(pconfig *CommConfig, conn *net.TCPConn) {
 	pclient.key = generate_client_key(i)
 
 	//add client
-	pserv.Lock()
+	//pserv.Lock()
 	pserv.client_list[i] = pclient
 	pserv.curr_conn++
 	pserv.key_map[pclient.key] = pclient.index
-	pserv.Unlock()
+	//pserv.Unlock()
 
 	log.Info("%s at %s success! index:%d curr_count:%d", _func_, pserv.addr, i, pserv.curr_conn)
 	go pclient.run(pconfig, pserv)
@@ -408,14 +469,21 @@ func (pserv *TcpServ) dispatch_send_pkg(pconfig *CommConfig) {
 	var pdata *queue_data
 	var idx int
 	var pclient *tcp_client
+	var ok bool
 	//dispatch
 	for i := 0; i < ch_len; i++ {
 		//queue_data
 		pdata = <-pserv.snd_queue
 
 		//check index
-		idx = pdata.idx
-		if idx >= pserv.max_conn || idx < 0 || pserv.curr_conn <= 0 {
+		idx , ok = pserv.key_map[pdata.key];
+		if !ok {
+			log.Err("%s client not exist any more! c_key:%d" , _func_ , pdata.key);
+			continue;
+		}
+		pdata.idx = idx;
+
+		if idx >= len(pserv.client_list) || idx < 0 || pserv.curr_conn <= 0 {
 			log.Err("%s illegal pkg! idx error. idx:%d", _func_, idx)
 			continue
 		}
@@ -454,9 +522,10 @@ func new_client(pconfig *CommConfig) *tcp_client {
 	pclient := new(tcp_client)
 
 	pclient.server_close = false
-	pclient.recv_cache = make([]byte, CLIENT_RW_CACHE) //pre alloc cache
+	pclient.read_cache = make([]byte , CLIENT_RW_CACHE_BASE);
+	pclient.recv_cache = make([]byte, CLIENT_RW_CACHE_BASE) //pre alloc cache
 	pclient.recv_cache = pclient.recv_cache[:0]
-	pclient.snd_cache = make([]byte, CLIENT_RW_CACHE)
+	pclient.snd_cache = make([]byte, CLIENT_RW_CACHE_BASE)
 	pclient.snd_cache = pclient.snd_cache[:0]
 	//pclient.recv_queue = make(chan *queue_data , RECV_QUEUE_LEN);
 	pclient.snd_queue = make(chan *queue_data, SND_QUEUE_LEN)
@@ -485,6 +554,12 @@ func close_client(pconfig *CommConfig, pclient *tcp_client) {
 
 //client go-routine
 func (pclient *tcp_client) run(pconfig *CommConfig, pserv *TcpServ) {
+	defer func() {
+		if err := recover(); err != nil{
+			pconfig.Log.Err("%s failed! err:%v" , "client.run" , err);
+			fmt.Printf("%s failed! err:%v" , "client.run" , err);
+		}
+	}()
 
 	for {
 		//exit-goroutine
@@ -556,7 +631,15 @@ func (pclient *tcp_client) read(pconfig *CommConfig, pserv *TcpServ) {
 
 	log := pconfig.Log
 	conn := pclient.conn
-	read_data := make([]byte, MAX_QUEUE_DATA)
+	read_data := pclient.read_cache
+
+	defer func() {
+	    if err := recover(); err != nil {
+	    	pconfig.Log.Err("tcp_client.read panic! err:%v" , err);
+	    	fmt.Printf("tcp_client.read panic! err:%v\n" , err);
+		}
+	}()
+
 
 	if pclient.stat == CLIENT_STAT_CLOSING {
 		log.Info("%s in closing! index:%d", _func_, pclient.index)
@@ -655,12 +738,6 @@ func (pclient *tcp_client) flush_recv_cache(pconfig *CommConfig, pserv *TcpServ)
 
 			//reset cache
 			copy(pclient.recv_cache[:cap(pclient.recv_cache)], raw_data[:])
-			/*
-			   if copyed != len(raw_data) {
-			   	log.Err("%s reset recv_cache failed! copy:%d raw:%d" , _func_ , copyed , len(raw_data));
-			   	return -1;
-			   }
-			   pclient.recv_cache = pclient.recv_cache[0:copyed];*/
 			log.Debug("%s saving  cached %d bytes", _func_, len(raw_data))
 			break
 		}
@@ -672,9 +749,22 @@ func (pclient *tcp_client) flush_recv_cache(pconfig *CommConfig, pserv *TcpServ)
 		if pkg_len > MAX_PKG_LEN {
 			log.Err("%s drop pkg for lenth overflow! pkg_len:%d max_len:%d idx:%d", _func_, pkg_len, MAX_PKG_LEN, pclient.index)
 		} else {
-			//put  queue
-			pdata := new(queue_data)
-			pdata.data = make([]byte, len(pkg_data))
+			//put  into queue
+			//reget pdata from pool
+			pv := queue_pool.Get();
+			pdata , ok := pv.(*queue_data);
+			if !ok {
+				log.Debug("%s renew" , _func_);
+				pdata = new(queue_data);
+			}
+			//may reuse pdata.data
+			if pdata.data!=nil && cap(pdata.data)>=len(pkg_data) {
+				log.Debug("%s just reuse pdata.data" , _func_);
+				pdata.data = pdata.data[:len(pkg_data)]
+			} else {
+				log.Debug("%s new pdata.data" , _func_);
+				pdata.data = make([]byte, len(pkg_data))
+			}
 			pdata.key = pclient.key
 			copy(pdata.data, pkg_data)
 			pdata.idx = pclient.index
@@ -685,20 +775,20 @@ func (pclient *tcp_client) flush_recv_cache(pconfig *CommConfig, pserv *TcpServ)
 			} else { //other optional pkg
 				pclient.handle_spec_pkg(pconfig, pserv, pdata)
 			}
-			log.Debug("%s success! tag:%x pkg_data:%v pkg_len:%d pkg_option:%d", _func_, tag, pkg_data, pkg_len,
-				pdata.flag)
+			//log.Debug("%s success! tag:%x pkg_data:%v pkg_len:%d pkg_option:%d", _func_, tag, pkg_data, pkg_len,
+			//	pdata.flag)
 		}
 
 		//forward
 		raw_data = raw_data[pkg_len:]
 		if len(raw_data) <= 0 {
 			pclient.recv_cache = pclient.recv_cache[:0] //clear cache
-			//log.Debug("%s no more data!" , _func_);
+			//log.Debug("%s no more data! may resize recv_cache" , _func_);
 			//recv may expand cache cap
-			if cap(pclient.recv_cache) > CLIENT_RW_CACHE {
+			if cap(pclient.recv_cache) > CLIENT_RW_CACHE_BASE * CLIENT_RW_CACHE_SHRINK_FACTOR {
 				new_cap := cap(pclient.recv_cache) / 2
-				if new_cap < CLIENT_RW_CACHE {
-					new_cap = CLIENT_RW_CACHE
+				if new_cap < CLIENT_RW_CACHE_BASE {
+					new_cap = CLIENT_RW_CACHE_BASE
 				}
 				log.Info("%s shrink recv_cache from %d to %d idx:%d", _func_, cap(pclient.recv_cache), new_cap)
 				pclient.recv_cache = make([]byte, new_cap) //new buffer
@@ -748,13 +838,14 @@ func (pclient *tcp_client) send(pconfig *CommConfig, pserv *TcpServ) {
 	//log.Debug("%s snd_queue_len:%d idx:%d" , _func_ , snd_len , pclient.index);
 	//handle each pkg
 	var pdata *queue_data
+	var data_len int
 	var pkg_len int
 	var ret int
 	var send_pkg int
 	for i := 0; i < snd_len; i++ {
 		//fetch a pkg
 		pdata = <-pclient.snd_queue
-
+        data_len = len(pdata.data);
 		//check data option
 		if pdata.info == QUEUE_INFO_CLOSE {
 			log.Info("%s detect info close. will close this connection! c_key:%d idx:%d", _func_,
@@ -766,6 +857,11 @@ func (pclient *tcp_client) send(pconfig *CommConfig, pserv *TcpServ) {
 		}
 
 		//pack pkg
+		if cap(pclient.snd_cache) < data_len {
+			new_cap := lnet.GetPkgLen(data_len) + 4;
+			log.Debug("%s resize snd cache cap: from %d --> %d" , _func_ , cap(pclient.snd_cache) , new_cap);
+			pclient.snd_cache = make([]byte , new_cap);
+		}
 		pkg_len = lnet.PackPkg(pclient.snd_cache[:cap(pclient.snd_cache)], pdata.data, pdata.flag)
 		if pkg_len < 0 {
 			log.Err("%s pack error! will drop pkg! idx:%d", _func_, pclient.index)
@@ -783,11 +879,27 @@ func (pclient *tcp_client) send(pconfig *CommConfig, pserv *TcpServ) {
 
 		if ret == 1 {
 			log.Debug("%s 2nd send part of data! idx:%d", _func_, pclient.index)
+			//restore pdata
+			queue_pool.Put(pdata);
 			break
 		}
 
 		//continue send
 		send_pkg++
+
+		//restore pdata
+		queue_pool.Put(pdata);
+	}
+
+	//resize snd cache
+	if len(pclient.snd_cache) == 0 && cap(pclient.snd_cache)>CLIENT_RW_CACHE_SHRINK_FACTOR*CLIENT_RW_CACHE_BASE{
+		new_cap := cap(pclient.snd_cache) / 2;
+		if new_cap < CLIENT_RW_CACHE_BASE {
+			new_cap = CLIENT_RW_CACHE_BASE;
+		}
+
+		log.Debug("%s will shrink snd_cache from %d-->%d" , _func_ , cap(pclient.snd_cache) , new_cap);
+		pclient.snd_cache = make([]byte , new_cap);
 	}
 
 	log.Debug("%s send pkg:%d idx:%d", _func_, send_pkg, pclient.index)
@@ -834,13 +946,6 @@ func (pclient *tcp_client) flush_send_cache(pconfig *CommConfig, pserv *TcpServ)
 		log.Debug("%s not all data sended! send:%d should_send:%d idx:%d", _func_, send_len, len(raw_data), pclient.index)
 		raw_data = raw_data[send_len:]
 		copy(pclient.snd_cache[:cap(pclient.snd_cache)], raw_data[:])
-		/*
-				if copyed != len(raw_data) {
-					log.Err("%s copy remaining cache failed! copyed:%d src:%d" , _func_ , copyed , len(raw_data));
-					pclient.stat = CLIENT_STAT_CLOSING;
-			        pserv.close_ch <- pclient.index;
-			        return -1;
-				}*/
 		pclient.snd_cache = pclient.snd_cache[:len(raw_data)]
 		return 1
 	}

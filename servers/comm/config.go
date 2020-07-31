@@ -21,10 +21,14 @@ const (
 
 	DEFAULT_SERVER_SLEEP_IDLE=5 //ms. server sleeps when idle 
 	
-    INFO_EXIT = iota //0 server exit
-    INFO_USR1 //1 server reload config
-    INFO_USR2 //2 reload tables
+    INFO_EXIT = 0 //0 server exit
+    INFO_USR1 = 1 //1 server reload config
+    INFO_USR2 = 2 //2 reload tables
+    INFO_PPROF= 3 //3 go pprof
 )
+
+
+
 
 
 type CommConfig struct {
@@ -37,6 +41,9 @@ type CommConfig struct {
 	PeerStats map[int] int64 //peer [procid]->heart_beat_ts
 	TickPool *TickPool
     ServerCfg interface{} //server *config if assigend
+    PProf ProfileConfig
+    ReportCmdToken int64 //if exe report cmd
+    ReportCmd string
 }
 
 

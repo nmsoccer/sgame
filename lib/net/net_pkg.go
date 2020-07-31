@@ -6,7 +6,7 @@ import (
 
 const (
 	TAG_LEN = 1
-
+	INT_MAX = 0x7FFFFFF0
 	//pkg option
 	PKG_OP_NORMAL = 0  //normal pkg
 	PKG_OP_ECHO   = 1  //echo client <-> tcp-serv
@@ -82,7 +82,7 @@ func UnPackPkg(raw []byte) (uint8, []byte, int) {
 	data_len = int(data_len_u32)
 	//Get Data
 	if raw_len < (data_len + head_len) { //pkg-data not ready
-		return 0, nil, 0
+		return 0, nil, data_len + head_len
 	}
 
 	pkg_data := raw[head_len : head_len+data_len]
@@ -95,20 +95,27 @@ func PkgOption(tag uint8) uint8 {
 	return tag >> 3
 }
 
-/*
-//predict pkg-len
-func GetPkgLen(pkg_data []byte) int{
-	if len(pkg_data) <= 0xFF {
-		return TAG_LEN+1+len(pkg_data);
+//predict pkg-len according to data_len
+//-1:if data_len illegal else pkg-len
+func GetPkgLen(data_len int) int {
+	if data_len < 0 || data_len >= INT_MAX {
+		return -1
 	}
 
-	if len(pkg_data) <= 0xFFFF {
-		return TAG_LEN+2+len(pkg_data);
+	if data_len <= 0xFF {
+		return TAG_LEN + 1 + data_len
 	}
 
-	return TAG_LEN + 4 + len(pkg_data);
+	if data_len <= 0xFFFF {
+		return TAG_LEN + 2 + data_len
+	}
+
+	if data_len >= INT_MAX {
+		return -1
+	}
+
+	return TAG_LEN + 4 + data_len
 }
-*/
 
 /*---------------------STATIC FUNCT------------------------*/
 /*

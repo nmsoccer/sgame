@@ -27,40 +27,44 @@ func RecvReportCmd(arg interface{}) {
 
 }
 
+
 func HandleReportCmd(pconfig *Config , pmsg *comm.ReportMsg) {
 	var _func_ = "HandleReportCmd";
 	log := pconfig.Comm.Log;
 
-	switch pmsg.ProtoId {
-	case comm.REPORT_PROTO_CMD_RELOAD:
-		if pmsg.StrValue == comm.RELOAD_CMD_CFG { //reload cfg
-			var file_config FileConfig;
-			ret := comm.LoadJsonFile(pconfig.ConfigFile , &file_config , pconfig.Comm);
-			if ret {
-				log.Info("%s reload_cfg success! proto:%d" , _func_ , pmsg.ProtoId);
-				*pconfig.FileConfig = file_config; //override
-				pconfig.ReportServ.Report(comm.REPORT_PROTO_RELOAD_RSP , pmsg.IntValue , comm.RELOAD_STAT_SUCCESS , nil);
-			} else {
-				pconfig.ReportServ.Report(comm.REPORT_PROTO_RELOAD_RSP , pmsg.IntValue , comm.RELOAD_STAT_FAIL , nil);
-			}
-		} else if pmsg.StrValue == comm.RELOAD_CMD_TAB { //reload table
-			ret := comm.ReLoadTableFiles(pconfig.TableMap , pconfig.Comm);
-			if ret {
-				log.Info("%s reload_table success! proto:%d" , _func_ , pmsg.ProtoId);
-				pconfig.ReportServ.Report(comm.REPORT_PROTO_RELOAD_RSP , pmsg.IntValue , comm.RELOAD_STAT_SUCCESS , nil);
-			} else {
-				pconfig.ReportServ.Report(comm.REPORT_PROTO_RELOAD_RSP , pmsg.IntValue , comm.RELOAD_STAT_FAIL , nil);
-			}
-
-		} else { //just back
-			pconfig.ReportServ.Report(comm.REPORT_PROTO_RELOAD_RSP , pmsg.IntValue , comm.RELOAD_STAT_NOP , nil);
-		}
-
-	default:
+	if pmsg.ProtoId != comm.REPORT_PROTO_CMD_REQ {
 		log.Err("%s illegal proto:%d" , _func_ , pmsg.ProcId);
+		return;
+	}
+
+
+	switch pmsg.StrValue {
+	case comm.CMD_RELOAD_CFG:
+		var file_config FileConfig;
+		ret := comm.LoadJsonFile(pconfig.ConfigFile , &file_config , pconfig.Comm);
+		if ret {
+			log.Info("%s reload_cfg success! proto:%d" , _func_ , pmsg.ProtoId);
+			AfterReLoadConfig(pconfig , pconfig.FileConfig , &file_config);
+			*pconfig.FileConfig = file_config; //override
+			pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP , pmsg.IntValue , comm.CMD_STAT_SUCCESS , nil);
+		} else {
+			pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP , pmsg.IntValue , comm.CMD_STAT_FAIL , nil);
+		}
+	case comm.CMD_RELOAD_TAB:
+		ret := comm.ReLoadTableFiles(pconfig.TableMap , pconfig.Comm);
+		if ret {
+			log.Info("%s reload_table success! proto:%d" , _func_ , pmsg.ProtoId);
+			pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP , pmsg.IntValue , comm.CMD_STAT_SUCCESS , nil);
+		} else {
+			pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP , pmsg.IntValue , comm.CMD_STAT_FAIL , nil);
+		}
+	case comm.CMD_STOP_SERVER:
+		pconfig.Comm.ChInfo <- comm.INFO_EXIT;
+		log.Info("%s will stop server! proto:%d" , _func_ , pmsg.ProtoId);
+		pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP , pmsg.IntValue , comm.CMD_STAT_SUCCESS , nil);
+	default:
+		pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP , pmsg.IntValue , comm.CMD_STAT_NOP , nil);
 	}
 
 	return;
 }
-
-

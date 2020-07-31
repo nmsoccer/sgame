@@ -14,6 +14,7 @@ var name_space = flag.String("N", "", "name space in proc_bridge sys")
 var proc_id = flag.Int("p", 0, "proc id in proc_bridge sys")
 var config_file = flag.String("f", "", "config file")
 var proc_name = flag.String("P", "", "proc name ")
+var daemonize = flag.Bool("D" , false , "run in daemonize mode")
 
 func init() {
 }
@@ -29,6 +30,7 @@ func parse_flag() bool {
 	pconfig.NameSpace = *name_space
 	pconfig.ConfigFile = *config_file
 	pconfig.ProcName = *proc_name
+	pconfig.Daemon = *daemonize
 	return true
 }
 
@@ -45,7 +47,7 @@ func main() {
 	}
 
 	//self set
-	if lib.SelfSet(pconfig) == false {
+	if lib.LocalSet(pconfig) == false {
 		fmt.Printf("self set failed!\n")
 		return
 	}
