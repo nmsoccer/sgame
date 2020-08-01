@@ -30,22 +30,22 @@ export PATH=$PATH:/usr/local/go/bin export GOPATH=/home/nmsoccer/go
 * **PROTOBUF-GO**  
 这里用手动安装来说明.
   * 下载安装  
-  进入https://github.com/protocolbuffers/protobuf-go 下载protobuf-go-master.zip, 然后拷贝到GOPATH/src: cp protobuf-go-master.zip $GOPATH/src/google.golang.org/; cd $GOPATH/src/google.golang.org/; 解压并改名解压后的目录为protobuf: unzip protobuf-go-master.zip; mv protobuf-go-master/ protobuf/
+  进入https://github.com/protocolbuffers/protobuf-go 下载protobuf-go-master.zip, 然后拷贝到GOPATH/src: mkdir -p $GOPATH/src/google.golang.org/; cp protobuf-go-master.zip $GOPATH/src/google.golang.org/; cd $GOPATH/src/google.golang.org/; 解压并改名解压后的目录为protobuf: unzip protobuf-go-master.zip; mv protobuf-go-master/ protobuf/
   * 生成protoc-gen-go工具  
   进入$GOPATH/src 然后go build google.golang.org/protobuf/cmd/protoc-gen-go/ 顺利的话会生成protoc-gen-go二进制文件 然后mv protoc-gen-go /usr/local/bin   
   * 安装proto库  
   进入$GOPATH/src 然后go install google.golang.org/protobuf/proto/ 安装协议解析库
   * 完成   
-  进入任意目录执行protoc --go_out=. xxx.proto即可在本目录生成xxx.pb.go文件（这里最好遵循proto3语法）
+  进入任意目录执行protoc --go_out=. xxx.proto即可在本目录生成xxx.pb.go文件（这里使用proto3）
   
   * 补充安装github.com/golang/protobuf/proto  
-  由于生成的xx.pb.go文件总会引用github.com/golang/protobuf/proto库，所以我们一般还需要额外安装这个玩意儿. 进入https://github.com/golang/protobuf页面，下载protobuf-master.zip到本地.
+  由于生成的xx.pb.go文件总会引用github.com/golang/protobuf/proto 库，所以我们一般还需要额外安装这个玩意儿. 进入https://github.com/golang/protobuf 页面，下载protobuf-master.zip到本地.
   然后mkdir -p $GOPATH/src/github.com/golang/目录. cp protobuf-master.zip $GOPATH/src/github.com/golang/. 解压并重命名cd $GOPATH/src/github.com/golang/; unzip protobuf-master.zip; mv protobuf-master/ protobuf/; 安装 cd $GOPATH/src; go install github.com/golang/protobuf/proto
   
 * **REDIGO**    
 redigo是go封装访问redis的支持库，这里仍然以手动安装说明
   * 下载  
-  进入https://github.com/gomodule/redigo页面 下载redigo-master.zip到本地
+  进入https://github.com/gomodule/redigo 页面,下载redigo-master.zip到本地
   * 安装  
   创建目录mkdir -p $GOPATH/src/github.com/gomodule; cp redigo-master.zip $GOPATH/src/github.com/gomodule; 解压并重命名: cd $GOPATH/src/github.com/gomodule; unzip redigo-master.zip; mv redigo-master redigo; 安装: cd $GOPATH/src; go install github.com/gomodule/redigo/redis  
   
