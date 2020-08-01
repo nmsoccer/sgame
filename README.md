@@ -168,8 +168,8 @@ sgame
 这里放置了可以供客户端和服务器进程使用的一些公开基础库，目前主要包括:  
   * log  
   日志库，封装了slog的go包，同时对多协程的日志记录进行了相应处理
-  * net 
-  网络收发的基本协议格式，规定了CLIENT<->SERVER之间数据传输的基本TLV协议格式  
+  * net   
+  网络收发的基本协议格式，定义了CLIENT<->SERVER之间数据传输的基本TLV协议格式  
   * proc  
   服务器进程之间的通信接口，封装了proc_bridge的go包，并提供了相应的API  
 
@@ -199,9 +199,9 @@ sgame
   用于负责处理游戏主要逻辑的业务进程。进程main文件为logic_serv.go
     * logic_serv/lib  
   用于保存logic_serv进程使用的库文件  
-    * logic_serv/table  
+    * logic_serv/table    
   业务进程经常使用的资源文件，由excel定义转化为json格式存储  
-    * logic_serv/table_desc
+    * logic_serv/table_desc  
   用于描述业务进程所使用资源文件(json格式)的go文件模板  
   
   * db_serv  
