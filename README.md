@@ -116,7 +116,7 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
     ![管理页面](https://github.com/nmsoccer/sgame/blob/master/pic/manage.png)   
     点击具体进程还可以查看到具体的性能指标，这里使用top的输出数据  
     ![详细信息](https://github.com/nmsoccer/sgame/blob/master/pic/man_detail.png)  
-    也可以在页面进行手动操作具体或全部进程，比如关闭全部进程  
+    也可以在页面进行手动操作具体或全部进程，比如关闭全部或部分进程  
     ![关闭进程ing](https://github.com/nmsoccer/sgame/blob/master/pic/stopping_server.png)  
     ![关闭进程done](https://github.com/nmsoccer/sgame/blob/master/pic/stopped_server.png)   
     
