@@ -1,9 +1,9 @@
 package lib
 
 import (
-	"sgame/proto/ss"
-	"sgame/servers/comm"
-	"time"
+    "sgame/proto/ss"
+    "time"
+    "sgame/servers/comm"
 )
 
 
@@ -11,15 +11,7 @@ func SendHeartBeatMsg(arg interface{}) {
 	var pconfig *Config;
 	var _func_ = "<SendHeartBeatMsg>";
 	curr_ts := time.Now().Unix();
-	/*
 
-	if ((curr_ts-last_send) < heart_beat_circle) {
-		return;
-	}
-	
-	//go>>>
-	last_send = curr_ts;
-	 */
 	pconfig , ok := arg.(*Config);
 	if !ok {
 		return;
@@ -30,7 +22,7 @@ func SendHeartBeatMsg(arg interface{}) {
     var ss_req ss.SSMsg;
     ss_req.ProtoType = ss.SS_PROTO_TYPE_HEART_BEAT_REQ;
     hb := new(ss.SSMsg_HeartBeatReq);
-    hb.HeartBeatReq = new(ss.MsgHeartBeatReq);
+    hb.HeartBeatReq = new(ss.MsgHeartBeatReq); 
     hb.HeartBeatReq.Ts = time.Now().Unix();
     ss_req.MsgBody = hb;
 
@@ -46,27 +38,17 @@ func SendHeartBeatMsg(arg interface{}) {
     
     proc := pconfig.Comm.Proc;
     //send msg
-      //to conn
-    ret := proc.Send(pconfig.FileConfig.ConnServ , buff , len(buff));
-    if ret < 0 {
-	    lp.Err("send msg to %d failed! err:%d" , pconfig.FileConfig.ConnServ , ret);
-    }
-      //to db
-    ret = proc.Send(pconfig.FileConfig.MasterDb , buff , len(buff));
-    if ret < 0 {
-	    lp.Err("send msg to %d failed! err:%d" , pconfig.FileConfig.MasterDb , ret);
-    }
-      //to disp
-    for _ , disp_serv := range pconfig.FileConfig.DispServList {
-		ret = proc.Send(disp_serv , buff , len(buff));
+    for _ , logic_id := range pconfig.FileConfig.LogicServList {
+		ret := proc.Send(logic_id, buff, len(buff));
 		if ret < 0 {
-			lp.Err("send msg to %d failed! err:%d" , disp_serv , ret);
+			lp.Err("send msg to %d failed! err:%d", logic_id, ret);
 		}
 	}
-
+    
+    
     //report
     pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_HEART , curr_ts , "" , nil);
-    pconfig.ReportServ.Report(comm.REPORT_PROTO_CONN_NUM , int64(pconfig.Users.curr_online) , "OnLine" , nil);
+    //pconfig.ReportServ.Report(comm.REPORT_PROTO_CONN_NUM , int64(pconfig.TcpServ.GetConnNum()) , "ClientConn" , nil);
 	return;
 }
 
@@ -86,11 +68,11 @@ func RecvHeartBeatReq(pconfig *Config , preq *ss.MsgHeartBeatReq , from int) {
 
 func ReportSyncServer(arg interface{}) {
 	var pconfig *Config;
-    pconfig , ok := arg.(*Config);
+	pconfig , ok := arg.(*Config);
 	if !ok {
 		return;
 	}
-
+	
 	//msg
 	pmsg := new(comm.SyncServerMsg);
 	pmsg.StartTime = pconfig.Comm.StartTs;

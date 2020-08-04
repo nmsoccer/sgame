@@ -46,25 +46,33 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp) {
 	log.Debug("%s result:%d user:%s c_key:%v", _func_, prsp.Result, prsp.Name, prsp.CKey)
 
 	//response
-	var gmsg cs.GeneralMsg
-	gmsg.ProtoId = cs.CS_PROTO_LOGIN_RSP
-	psub := new(cs.CSLoginRsp)
-	gmsg.SubMsg = psub
+	var pmsg *cs.CSLoginRsp
+	pv , err := cs.Proto2Msg(cs.CS_PROTO_LOGIN_RSP);
+	if err != nil {
+		log.Err("%s proto2msg failed! proto:%d err:%v" , _func_ , cs.CS_PROTO_LOGIN_RSP , err);
+		return;
+	}
+	pmsg , ok := pv.(*cs.CSLoginRsp);
+	if !ok {
+		log.Err("%s proto2msg type illegal!  proto:%d" , _func_ , cs.CS_PROTO_LOGIN_RSP);
+		return;
+	}
 
-	//gmsg
-	psub.Result = int(prsp.Result)
-	psub.Name = prsp.Name
+
+	//msg
+	pmsg.Result = int(prsp.Result)
+	pmsg.Name = prsp.Name
 	//success
 	if prsp.Result == ss.USER_LOGIN_RET_LOGIN_SUCCESS {
 		//basic
-		psub.Basic.Uid = prsp.GetUserInfo().BasicInfo.Uid
-		psub.Basic.Name = prsp.Name
-		psub.Basic.Addr = prsp.UserInfo.BasicInfo.Addr
-		psub.Basic.Level = prsp.UserInfo.BasicInfo.Level
+		pmsg.Basic.Uid = prsp.GetUserInfo().BasicInfo.Uid
+		pmsg.Basic.Name = prsp.Name
+		pmsg.Basic.Addr = prsp.UserInfo.BasicInfo.Addr
+		pmsg.Basic.Level = prsp.UserInfo.BasicInfo.Level
 		if prsp.UserInfo.BasicInfo.Sex {
-			psub.Basic.Sex = 1
+			pmsg.Basic.Sex = 1
 		} else {
-			psub.Basic.Sex = 0
+			pmsg.Basic.Sex = 0
 		}
 
 		//blob
@@ -72,27 +80,28 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp) {
 
 
 		//detail
-		psub.Detail.Exp = prsp.UserInfo.BlobInfo.Exp;
-		psub.Detail.Depot = new(cs.UserDepot);
-		psub.Detail.Depot.Items = make(map[int64]*cs.Item);
+		pmsg.Detail.Exp = prsp.UserInfo.BlobInfo.Exp;
+		pmsg.Detail.Depot = new(cs.UserDepot);
+		pmsg.Detail.Depot.Items = make(map[int64]*cs.Item);
 		if pblob!=nil && pblob.GetDepot()!=nil && pblob.GetDepot().GetItems()!= nil {
 			for instid, pitem := range prsp.UserInfo.BlobInfo.Depot.Items {
-				psub.Detail.Depot.Items[instid] = new(cs.Item);
-				psub.Detail.Depot.Items[instid].Instid = instid;
-				psub.Detail.Depot.Items[instid].Count = pitem.Count;
-				psub.Detail.Depot.Items[instid].Attr = pitem.Attr;
-				psub.Detail.Depot.Items[instid].ResId = pitem.Resid;
+				pmsg.Detail.Depot.Items[instid] = new(cs.Item);
+				pmsg.Detail.Depot.Items[instid].Instid = instid;
+				pmsg.Detail.Depot.Items[instid].Count = pitem.Count;
+				pmsg.Detail.Depot.Items[instid].Attr = pitem.Attr;
+				pmsg.Detail.Depot.Items[instid].ResId = pitem.Resid;
 			}
+			pmsg.Detail.Depot.ItemsCount = prsp.UserInfo.BlobInfo.Depot.ItemsCount;
 		}
-		psub.Detail.Depot.ItemsCount = prsp.UserInfo.BlobInfo.Depot.ItemsCount;
+
 
 		//create map refer
-		pconfig.Ckey2Uid[prsp.CKey] = psub.Basic.Uid
-		pconfig.Uid2Ckey[psub.Basic.Uid] = prsp.CKey
+		pconfig.Ckey2Uid[prsp.CKey] = pmsg.Basic.Uid
+		pconfig.Uid2Ckey[pmsg.Basic.Uid] = prsp.CKey
 	}
 
 	//to client
-	SendToClient(pconfig, prsp.CKey, &gmsg)
+	SendToClient(pconfig, prsp.CKey, cs.CS_PROTO_LOGIN_RSP , pmsg)
 }
 
 func SendLogoutReq(pconfig *Config, uid int64, reason ss.USER_LOGOUT_REASON) {
@@ -137,18 +146,26 @@ func RecvLogoutRsp(pconfig *Config, prsp *ss.MsgLogoutRsp) {
 	}
 
 	//response
-	var gmsg cs.GeneralMsg
-	gmsg.ProtoId = cs.CS_PROTO_LOGOUT_RSP
-	psub := new(cs.CSLogoutRsp)
-	gmsg.SubMsg = psub
+	var pmsg *cs.CSLogoutRsp
+	pv , err := cs.Proto2Msg(cs.CS_PROTO_LOGOUT_RSP);
+	if err != nil {
+		log.Err("%s proto2msg failed! proto:%d err:%v" , _func_ , cs.CS_PROTO_LOGOUT_RSP , err);
+		return;
+	}
+	pmsg , ok = pv.(*cs.CSLogoutRsp);
+	if !ok {
+		log.Err("%s proto2msg type illegal!  proto:%d" , _func_ , cs.CS_PROTO_LOGOUT_RSP);
+		return;
+	}
+
 
 	//fill
-	psub.Msg = prsp.Msg
-	psub.Result = int(prsp.Reason);
-	psub.Uid = prsp.Uid
+	pmsg.Msg = prsp.Msg
+	pmsg.Result = int(prsp.Reason);
+	pmsg.Uid = prsp.Uid
 
 	//to client
-	SendToClient(pconfig, c_key, &gmsg);
+	SendToClient(pconfig, c_key, cs.CS_PROTO_LOGOUT_RSP , pmsg);
 
 	//should check close connection positively
 	switch prsp.Reason {
@@ -210,17 +227,33 @@ func RecvRegRsp(pconfig *Config, prsp *ss.MsgRegRsp) {
 
 
 	//response
+	/*
 	var gmsg cs.GeneralMsg
 	gmsg.ProtoId = cs.CS_PROTO_REG_RSP;
 	psub := new(cs.CSRegRsp)
 	gmsg.SubMsg = psub
+	 */
+	//response
+	var pmsg *cs.CSRegRsp
+	pv , err := cs.Proto2Msg(cs.CS_PROTO_REG_RSP);
+	if err != nil {
+		log.Err("%s proto2msg failed! proto:%d err:%v" , _func_ , cs.CS_PROTO_REG_RSP , err);
+		return;
+	}
+	pmsg , ok := pv.(*cs.CSRegRsp);
+	if !ok {
+		log.Err("%s proto2msg type illegal!  proto:%d" , _func_ , cs.CS_PROTO_REG_RSP);
+		return;
+	}
+
+
 
 	//fill
-	psub.Result = int(prsp.Result);
-	psub.Name = prsp.Name;
+	pmsg.Result = int(prsp.Result);
+	pmsg.Name = prsp.Name;
 
 
 	//to client
-	SendToClient(pconfig, prsp.CKey, &gmsg);
+	SendToClient(pconfig, prsp.CKey, cs.CS_PROTO_REG_RSP , pmsg);
     return;
 }

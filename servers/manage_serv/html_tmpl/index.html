@@ -4,7 +4,7 @@
 <title>
 index
 </title>
-<h2>Main</h2>
+<h3>MAIN</h3>
 <form action="./cmd" method="post">
   ProcName(regular exp support) <input type="text" name="proc_name" />  
   Operation <select name="operation">
@@ -14,6 +14,9 @@ index
   </select>  
   <input type="submit" value="submit" /> <br/>
 </form>
+
+
+<b>TOTAL:{{ len . }} </b><br/>
 
 {{ range $proc_id , $watch := . }}
 {{ with $watch }}

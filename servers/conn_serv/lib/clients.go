@@ -80,6 +80,7 @@ func ReadClients(pconfig *Config) int64 {
 	return diff
 }
 
+//C-->S Decode and Handle Msg
 func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
 	var _func_ = "<HandleClientPkg>"
 	var gmsg cs.GeneralMsg
@@ -209,12 +210,28 @@ func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
 	}
 }
 
-func SendToClient(pconfig *Config, client_key int64, gmsg *cs.GeneralMsg) bool {
+/*Encode And Send to Client
+* @proto: cs proto
+* @pmsg : msg from cs.Proto2Msg
+*/
+func SendToClient(pconfig *Config, client_key int64, proto int , pmsg interface{}) bool {
 	var _func_ = "<SendToClient>"
 	log := pconfig.Comm.Log
+	var gmsg cs.GeneralMsg
+
+	//check proto
+	if proto<=cs.CS_PROTO_START || proto>=cs.CS_PROTO_END {
+		log.Err("%s failed! proto:%d illegal!" , _func_ , proto);
+		return false;
+	}
+
+
+	//fulfill gmsg
+	gmsg.ProtoId = proto;
+	gmsg.SubMsg = pmsg;
 
 	//enc msg
-	enc_data, err := cs.EncodeMsg(gmsg)
+	enc_data, err := cs.EncodeMsg(&gmsg)
 	if err != nil {
 		log.Err("%s encode msg failed! key:%v err:%v", _func_, client_key, err)
 		return false

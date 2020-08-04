@@ -126,12 +126,23 @@ func cb_user_login_check_pass(comm_config *comm.CommConfig, result interface{}, 
 			break
 		}
 
+		//get uid
+		user_uid , err := strconv.ParseInt(uid , 10 , 64);
+		if err != nil {
+			log.Err("%s parse uid failed! uid:%s err:%v user:%s" , _func_ , uid , err , preq.Name);
+			prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR
+			break;
+		}
+
+
 		//check online
 		//already login at other logic should kick first
 		if online_logic >= 0 && online_logic != from_serv {
-			log.Info("%s user:%s login at other logic server %s kick first!" , _func_ , preq.Name , preq.CKey);
+			log.Info("%s user:%s login at other logic server %d now logic:%d kick first!" , _func_ , preq.Name , online_logic ,
+				from_serv);
 			prsp.Result = ss.USER_LOGIN_RET_LOGIN_MULTI_ON;
 			prsp.OnlineLogic = int32(online_logic);
+			prsp.Uid = user_uid;
 			break;
 		}
 
@@ -159,7 +170,7 @@ func cb_user_login_check_pass(comm_config *comm.CommConfig, result interface{}, 
 		log.Err("%s send back to %d failed!", _func_, from_serv)
 		return
 	}
-	log.Err("%s send back to %d success!", _func_, from_serv)
+	log.Debug("%s send back to %d success!", _func_, from_serv)
 	return
 }
 
@@ -207,7 +218,7 @@ func cb_update_online(comm_config *comm.CommConfig, result interface{}, cb_arg [
 }
 
 
-//cb_arg={0:preq 1:from_server}
+//cb_arg={0:preq 1:from_server 2:uid}
 func cb_user_login_get_info(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
 	var _func_ = "<cb_user_login_get_info>"
 	var ss_msg ss.SSMsg
@@ -337,6 +348,7 @@ func cb_user_login_get_info(comm_config *comm.CommConfig, result interface{}, cb
 
 		//Fullfill
 		prsp.Result = ss.USER_LOGIN_RET_LOGIN_SUCCESS
+		prsp.Uid = uid;
 		pbasic.Addr = addr
 		pbasic.Uid = uid
 		pbasic.Age = int32(age)

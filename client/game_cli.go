@@ -39,7 +39,7 @@ var port = flag.Int("p", 0, "server port")
 var method = flag.Int("m", 0, "method 1:interace 2:command")
 var cmd = flag.String("c", "", "cmd")
 var keep = flag.Int("k" , 0 , "keepalive seconds if method=2")
-var quiet = flag.Bool("q" , false , "quiet if method=2");
+var quiet = flag.Bool("q" , false , "quiet");
 
 func init() {
 	cmd_map = make(map[string]string)
@@ -117,7 +117,7 @@ func RecvPkg(conn *net.TCPConn) {
 			prsp, ok := gmsg.SubMsg.(*cs.CSPingRsp)
 			if ok {
 				curr_ts := time.Now().UnixNano() / 1000
-				v_print("ping:%v ms\n", (curr_ts-prsp.TimeStamp)/1000)
+				v_print("ping:%v ms crr_ts:%d req:%d\n", (curr_ts-prsp.TimeStamp)/1000 , curr_ts , prsp.TimeStamp)
 
 				if *method == METHOD_COMMAND {
 					exit_ch <- true;
@@ -134,6 +134,8 @@ func RecvPkg(conn *net.TCPConn) {
                     for instid , pitem := range prsp.Detail.Depot.Items {
                     	v_print("[%d] res:%d count:%d attr:%d\n" , instid , pitem.ResId , pitem.Count , pitem.Attr);
 					}
+				} else {
+					v_print("login result:%d name:%s\n", prsp.Result, prsp.Name)
 				}
 				if *method == METHOD_COMMAND {
 					exit_ch <- true;
@@ -260,7 +262,7 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 	if err != nil {
 		fmt.Printf("send cmd pkg failed! cmd:%s err:%v\n", cmd, err)
 	} else {
-		v_print("send cmd:%s success! pkg:%v pkg_len:%d json:%s\n", cmd, pkg_buff[:pkg_len], pkg_len, string(enc_data))
+		v_print("send cmd:%s success! \n", cmd)
 	}
 }
 
@@ -281,7 +283,7 @@ func main() {
 		return;
 	}
 
-	v_print("start client ...")
+	v_print("start client ...\n")
 	start_us := time.Now().UnixNano()/1000;
 	//server_addr := "localhost:18909";
 	server_addr := *host + ":" + strconv.Itoa(*port)

@@ -18,6 +18,8 @@ enum SS_PROTO_TYPE {
   LOGOUT_RSP = 7;
   REG_REQ = 8;
   REG_RSP = 9;
+  TRANS_LOGIC_REQ = 10; //logic --> disp --> logic2
+  TRANS_LOGIC_RSP = 11;
 }
 
 enum SS_COMMON_RESULT {
@@ -39,6 +41,8 @@ message SSMsg {
 	MsgLogoutRsp logout_rsp = 27;
 	MsgRegReq reg_req = 28;
 	MsgRegRsp reg_rsp = 29;
+	MsgTransLogicReq trans_logic_req = 30;
+	MsgTransLogicRsp trans_logic_rsp = 31;
   }  
 }
 
@@ -82,6 +86,7 @@ message MsgLoginRsp {
   USER_LOGIN_RET result=1;
   int64 c_key=2;
   string name=3;
+  int64 uid = 4; //may empty
   UserInfo user_info=20;
   int32 online_logic=21;
 }
@@ -127,5 +132,27 @@ message MsgRegRsp {
   REG_RESULT result=1;
   int64 c_key=2;
   string name=3;
+}
+
+//trans logic
+enum TRANS_LOGIC_CMD {
+  TRANS_CMD_NOTHING = 0;
+  TRANS_CMD_KICK_OLD_ONLINE = 1; //kick old online when new client login 
+}
+
+message MsgTransLogicReq {
+  TRANS_LOGIC_CMD cmd = 1;
+  int64 uid = 2;
+  int32 my_serv = 3;  
+  int32 target_serv = 20;
+}
+
+
+message MsgTransLogicRsp {
+  TRANS_LOGIC_CMD cmd = 1;
+  int64 uid = 2;
+  int32 my_serv = 3;
+  int32 target_serv = 20;
+  int64 int_value = 21;  
 }
 

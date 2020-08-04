@@ -44,6 +44,11 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp, msg []byte) {
     curr_ts := time.Now().Unix();
 	/**Success Cache User*/
 	switch prsp.Result {
+	case ss.USER_LOGIN_RET_LOGIN_MULTI_ON: //kick other logic role firstly
+		log.Info("%s login at other logic:%d. will kick it first! uid:%d" , _func_ , prsp.OnlineLogic , prsp.Uid);
+        SendTransLogicKick(pconfig , prsp);
+
+
 	case ss.USER_LOGIN_RET_LOGIN_SUCCESS:
 		puser_info := prsp.GetUserInfo()
 		uid := puser_info.BasicInfo.Uid
@@ -72,13 +77,8 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp, msg []byte) {
 		//update user_Info
 		puser_info.BlobInfo.LastLoginTs = curr_ts;
 
-
-
-
-
 		//add
 		pconfig.Users.curr_online++
-
 	default:
 		//nothing to do
 	}
@@ -92,6 +92,62 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp, msg []byte) {
 	//log.Debug("%s send to connect success! user:%s", _func_, prsp.Name)
 }
 
+func SendTransLogicKick(pconfig *Config , prsp *ss.MsgLoginRsp) {
+    var _func_ = "<SendTransLogicKick>";
+    log := pconfig.Comm.Log;
+
+    if prsp.Uid <= 0 {
+    	log.Err("%s failed! uid empty! name:%s" , _func_ , prsp.Name);
+    	return;
+	}
+
+	//ss
+	var ss_msg ss.SSMsg;
+    ss_msg.ProtoType = ss.SS_PROTO_TYPE_TRANS_LOGIC_REQ
+    body := new(ss.SSMsg_TransLogicReq);
+    body.TransLogicReq = new(ss.MsgTransLogicReq);
+    preq := body.TransLogicReq;
+    preq.Cmd = ss.TRANS_LOGIC_CMD_TRANS_CMD_KICK_OLD_ONLINE
+    preq.Uid = prsp.Uid
+    preq.MyServ = int32(pconfig.ProcId)
+    preq.TargetServ = prsp.OnlineLogic;
+    ss_msg.MsgBody = body;
+
+
+    enc_data , err := ss.Pack(&ss_msg)
+    if err != nil {
+    	log.Err("%s enc failed! err:%v uid:%d" , _func_ , err , prsp.Uid);
+    	return;
+	}
+
+	//send
+	if !SendToDispHash(pconfig , int(prsp.Uid) , enc_data) {
+		log.Err("%s send to disp failed! uid:%d" , _func_ , prsp.Uid);
+	}
+	log.Debug("%s send to disp success! name:%s uid:%d", _func_, prsp.Name , prsp.Uid)
+}
+
+//recv kickout from other logic-serv
+func RecvTransLogicKick(pconfig *Config , preq *ss.MsgTransLogicReq) {
+    var _func_ = "<RecvTransLogicKick>"
+    log := pconfig.Comm.Log;
+
+    //check arg
+    if preq == nil {
+    	log.Err("%s req nil!" , _func_);
+    	return;
+	}
+
+	log.Info("%s will kickout uid:%d from:%d" , _func_ , preq.Uid , preq.MyServ);
+    //logout
+    var logout ss.MsgLogoutReq;
+    logout.Uid = preq.Uid;
+    logout.Reason = ss.USER_LOGOUT_REASON_LOGOUT_SERVER_KICK_RECONN;
+    RecvLogoutReq(pconfig , &logout);
+}
+
+
+
 func RecvLogoutReq(pconfig *Config, plogout *ss.MsgLogoutReq) {
 	var _func_ = "<RecvLogoutReq>"
 	log := pconfig.Comm.Log
@@ -104,10 +160,14 @@ func RecvLogoutReq(pconfig *Config, plogout *ss.MsgLogoutReq) {
 	case ss.USER_LOGOUT_REASON_LOGOUT_CLIENT_EXIT:
 		//back to client
 		SendLogoutRsp(pconfig, plogout.Uid, plogout.Reason, "fuck")
+	case ss.USER_LOGOUT_REASON_LOGOUT_SERVER_KICK_RECONN:
+		//back to client
+		SendLogoutRsp(pconfig , plogout.Uid , plogout.Reason , "login-other");
 	default:
 		//nothing to do
 	}
 
+	//save user info and clear login stat
     UserLogout(pconfig , plogout.Uid , plogout.Reason);
 	return
 }

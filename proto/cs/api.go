@@ -23,7 +23,7 @@ const (
 	CS_PROTO_LOGOUT_RSP = 6
 	CS_PROTO_REG_REQ    = 7
 	CS_PROTO_REG_RSP    = 8
-	//PS:new proto added should modify 'proto2msg' function
+	//PS:new proto added should modify 'Proto2Msg' function
 	//proto end = last + 1
 	CS_PROTO_END = 9
 )
@@ -71,7 +71,7 @@ func DecodeMsg(data []byte, pmsg *GeneralMsg) error {
 
 	//switch proto
 	proto_id := proto_head.ProtoId
-	psub, err := proto2msg(proto_id)
+	psub, err := Proto2Msg(proto_id)
 	if err != nil {
 		return err
 	}
@@ -86,11 +86,11 @@ func DecodeMsg(data []byte, pmsg *GeneralMsg) error {
 	return nil
 }
 
-/*-----------------------------------STATIC--------------------*/
+
 /*
-* get real msg pointer by proto
+* Get ProtoMsg By Proto
  */
-func proto2msg(proto_id int) (interface{}, error) {
+func Proto2Msg(proto_id int) (interface{}, error) {
 	var pmsg interface{}
 
 	//refer
@@ -118,3 +118,7 @@ func proto2msg(proto_id int) (interface{}, error) {
 	//return
 	return pmsg, nil
 }
+
+
+/*-----------------------------------STATIC--------------------*/
+

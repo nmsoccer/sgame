@@ -8,16 +8,10 @@ import (
 )
 
 type FileConfig struct {
-	//	ProcName string `json:"proc_name"`
-	ConnServ      int      `json:"conn_serv"`
-	DispServList  []int    `json:"disp_serv_list"`
-	MasterDb      int      `json:"master_db"`
-	SlaveDb       int      `json:"slave_db"`
-	LogFile       string   `json:"log_file"`
-	ManageAddr    []string `json:"manage_addr"`
-	MaxOnline     int      `json:"max_online"`
-	ClientTimeout int      `json:"client_timeout"`
-	MonitorInv    int      `json:"monitor_inv"` //monitor interval seconds
+	LogicServList  []int      `json:"logic_serv_list"`
+	LogFile    string   `json:"log_file"`
+	ManageAddr []string `json:"manage_addr"`
+	MonitorInv int      `json:"monitor_inv"` //monitor interval seconds
 }
 
 type Config struct {
@@ -26,13 +20,11 @@ type Config struct {
 	ProcId     int
 	ProcName   string
 	ConfigFile string
-	Daemon     bool
+	Daemon bool
 	FileConfig *FileConfig
 	Comm       *comm.CommConfig
 	ReportServ *comm.ReportServ //report to manger
 	//local
-	TableMap   comm.TableMap
-	Users      *OnLineList
 }
 
 //Comm Config Setting
@@ -64,57 +56,33 @@ func CommSet(pconfig *Config) bool {
 	}
 	pconfig.Comm.ServerCfg = pconfig
 
-	var log = pconfig.Comm.Log
 	//lock uniq
 	if comm.LockUniqFile(pconfig.Comm, pconfig.NameSpace, pconfig.ProcId, pconfig.ProcName) == false {
-		log.Err("%s lock uniq file failed!", _func_)
+		pconfig.Comm.Log.Err("%s lock uniq file failed!", _func_)
 		return false
 	}
-
 	return true
 }
 
 //Local Proc Setting
 func LocalSet(pconfig *Config) bool {
 	var _func_ = "<LocalSet>"
-	var log = pconfig.Comm.Log
+	log := pconfig.Comm.Log
 
-	//users
-	pconfig.Users = new(OnLineList)
-	if pconfig.Users == nil {
-		log.Err("%s new users failed!", _func_)
-		return false
-	}
-	pconfig.Users.user_map = make(map[int64]*UserOnLine)
-
-	//reg table-map
-	if RegistTableMap(pconfig) == false {
-		log.Err("%s regist table map failed!", _func_)
-		return false
-	}
-
-	//load table-map
-	if comm.LoadTableFiles(pconfig.TableMap, pconfig.Comm) == false {
-		log.Err("%s load table files failed!", _func_)
-		return false
-	}
 
 	//start report serv
-	pconfig.ReportServ = comm.StartReport(pconfig.Comm, pconfig.ProcId, pconfig.ProcName, pconfig.FileConfig.ManageAddr, comm.REPORT_METHOD_ALL,
-		pconfig.FileConfig.MonitorInv)
+	pconfig.ReportServ = comm.StartReport(pconfig.Comm, pconfig.ProcId, pconfig.ProcName, pconfig.FileConfig.ManageAddr, comm.REPORT_METHOD_ALL ,
+		pconfig.FileConfig.MonitorInv);
 	if pconfig.ReportServ == nil {
-		log.Err("%s fail! start report failed!", _func_)
-		return false
+		log.Err("%s fail! start report failed!" , _func_);
+		return false;
 	}
 	pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_START, time.Now().Unix(), "", nil)
 
 	//add ticker
 	pconfig.Comm.TickPool.AddTicker("heart_beat", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_HEART_BEAT_DEFAULT, SendHeartBeatMsg, pconfig)
 	pconfig.Comm.TickPool.AddTicker("report_sync", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_REPORT_SYNC_DEFAULT, ReportSyncServer, pconfig)
-	pconfig.Comm.TickPool.AddTicker("check_client_heart", comm.TICKER_TYPE_CIRCLE, 0, int64(pconfig.FileConfig.ClientTimeout*1000),
-		CheckClientTimeout, pconfig)
-	pconfig.Comm.TickPool.AddTicker("recv_cmd", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_RECV_REPORT_CMD_DEFAULT, RecvReportCmd, pconfig)
-
+	pconfig.Comm.TickPool.AddTicker("recv_cmd" , comm.TICKER_TYPE_CIRCLE , 0 , comm.PERIOD_RECV_REPORT_CMD_DEFAULT , RecvReportCmd , pconfig);
 	return true
 }
 
@@ -169,12 +137,12 @@ func ServerStart(pconfig *Config) {
 }
 
 //After ReLoad Config If Need Handle
-func AfterReLoadConfig(pconfig *Config, old_config *FileConfig, new_config *FileConfig) {
-	var _func_ = "<AfterReLoadConfig>"
-	log := pconfig.Comm.Log
+func AfterReLoadConfig(pconfig *Config , old_config *FileConfig , new_config *FileConfig)  {
+	var _func_ = "<AfterReLoadConfig>";
+	log := pconfig.Comm.Log;
 
-	log.Info("%s finish!", _func_)
-	return
+	log.Info("%s finish!" , _func_);
+	return;
 }
 
 /*----------------Static Func--------------------*/
@@ -188,20 +156,19 @@ func handle_info(pconfig *Config) {
 			ServerExit(pconfig)
 		case comm.INFO_USR1:
 			log.Info(">>reload config!")
-			var new_config FileConfig
-			ret := comm.LoadJsonFile(pconfig.ConfigFile, &new_config, pconfig.Comm)
+			var new_config FileConfig;
+			ret := comm.LoadJsonFile(pconfig.ConfigFile , &new_config , pconfig.Comm);
 			if !ret {
-				log.Err("%s reload config failed!", _func_)
+				log.Err("%s reload config failed!" , _func_)
 			} else {
-				AfterReLoadConfig(pconfig, pconfig.FileConfig, &new_config)
-				*(pconfig.FileConfig) = new_config
+				AfterReLoadConfig(pconfig , pconfig.FileConfig , &new_config);
+				*(pconfig.FileConfig) = new_config;
 			}
 		case comm.INFO_USR2:
-			log.Info(">>reload tables")
-			comm.ReLoadTableFiles(pconfig.TableMap, pconfig.Comm)
+			log.Info(">>info usr2")
 		case comm.INFO_PPROF:
-			log.Info(">>profiling")
-			comm.DefaultHandleProfile(pconfig.Comm)
+			log.Info(">>profiling");
+			comm.DefaultHandleProfile(pconfig.Comm);
 		default:
 			pconfig.Comm.Log.Info("unknown msg")
 		}

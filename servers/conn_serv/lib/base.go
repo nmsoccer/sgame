@@ -19,6 +19,7 @@ type FileConfig struct {
 }
 
 type Config struct {
+	//comm
 	NameSpace  string
 	ProcId     int
 	ProcName   string
@@ -26,10 +27,11 @@ type Config struct {
 	Daemon bool
 	FileConfig *FileConfig
 	Comm       *comm.CommConfig
+	ReportServ *comm.ReportServ //report to manger
+	//local
 	TcpServ    *comm.TcpServ
 	Ckey2Uid   map[int64]int64  //client key to uid. used for search login user
 	Uid2Ckey   map[int64]int64  //uid to client key. used for login user
-	ReportServ *comm.ReportServ //report to manger
 }
 
 //Comm Config Setting

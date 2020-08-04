@@ -1,7 +1,8 @@
 package comm
 
 import(
-    "sgame/lib/log"
+	"math/rand"
+	"sgame/lib/log"
     "sgame/lib/proc"
     "time"
     "os"
@@ -156,3 +157,53 @@ func GenerateLocalId(wid int16 , seq *uint16) int64 {
     id = ((int64(*seq) & 0xFFFF) << 47) | ((int64(wid) & 0xFFFF) << 31) | (diff & 0x7FFFFFFF);
 	return id;
 }
+
+/*select a proper id
+* first select by hash key from candidate list
+* if stat is dead (last life >= heart) select a random
+* @result <=0 failed >0 success
+*/
+func SelectHashProperId(hash_v int , candidate []int , stats map[int] int64 , heart int) int{
+	if len(candidate) <= 0 {
+		return -1;
+	}
+
+	if len(candidate) == 1 {
+		return candidate[0]
+	}
+
+	//get pos by hash
+	curr_ts := time.Now().Unix();
+	pos := hash_v % len(candidate);
+	target := candidate[pos];
+
+	//alive
+	if stats[target] + int64(heart) >= curr_ts {
+		return target;
+	}
+
+    //rand one
+    total := len(candidate)
+    i := rand.Intn(len(candidate));
+    count := 0
+
+    for {
+        if count >= total {
+        	break;
+		}
+
+        //search
+        target = candidate[i]
+		if stats[target] + int64(heart) >= curr_ts {
+			return target;
+		}
+
+		//iter again
+		i++
+        i = i % total
+        count++
+	}
+
+    return -1;
+}
+
