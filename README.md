@@ -87,20 +87,25 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
     * 发布拉起 
       ./spush -P -f sgame.json 结果如下:
       ```
-      ++++++++++++++++++++spush (2020-07-27 17:08:05)++++++++++++++++++++
+      ++++++++++++++++++++spush (2020-06-27 17:08:05)++++++++++++++++++++
       .push all procs
-      create cfg:4/4 
+      create cfg:9/9 
   
       ----------Push <sgame> Result---------- 
       ok
       .
-      [4/4]
+      [9/9]
+      [db_logic_serv-2]::success 
+      [disp_serv-1]::success 
+      [disp_serv-2]::success 
+      [manage_serv-1]::success 
+      [conn_serv-2]::success 
+      [logic_serv-2]::success 
+      [db_logic_serv-1]::success 
       [conn_serv-1]::success 
       [logic_serv-1]::success 
-      [db_logic_serv-1]::success 
-      [manage_serv-1]::success 
 
-      +++++++++++++++++++++end (2020-07-27 17:08:07)+++++++++++++++++++++
+      +++++++++++++++++++++end (2020-06-27 17:08:07)+++++++++++++++++++++
       ```
       说明OK鸟  
     
@@ -156,6 +161,8 @@ sgame
 |   |   |-- lib
 |   |   |-- table
 |   |   `-- table_desc
+|   |-- disp_serv
+|   |   `-- lib
 |   |-- manage_serv
 |   |   |-- html_tmpl
 |   |   `-- lib
@@ -213,7 +220,12 @@ sgame
   * db_serv  
   用于负责框架与redis数据库的读写进程。进程main文件为db_serv.go
     * db_serv/lib  
-  用于保存db_serv进程使用的库文件  
+  用于保存db_serv进程使用的库文件
+  
+  * disp_serv  
+  用于不同logic组之间的消息互通  
+    * disp_serv/lib  
+  用于保存disp_serv进程使用的库文件  
   
     * manage_serv  
   用于负责管理各具体业务进程的管理进程。进程main文件为manage_serv.go
