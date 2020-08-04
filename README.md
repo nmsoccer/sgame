@@ -10,7 +10,8 @@ A Simple Game Framework  一个简单的游戏框架
 * **未完待续**
 
 ### 简单架构  
-这是一个简单的架构图，主要以各group里的connect_serv,logic_serv,db_serv三层逻辑为核心，框架功能也以这三层的实现为主。同时表现扩展性这里部署了两组，它们之间通过disp互相通信.更多的进程说明请参考wiki 
+这是一个简单的架构图，主要以各group里的connect_serv,logic_serv,db_serv三层逻辑为核心，框架功能也以这三层的实现为主。同时为表现扩展性这里部署了两组，它们之间通过disp互相通信.  
+更多的架构说明请参考wiki 
 ![架构](https://github.com/nmsoccer/sgame/blob/master/pic/sgame.png) 
 
 
