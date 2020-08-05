@@ -1,0 +1,281 @@
+/*
+=====This is a C API file for parse server-client transport pkg in SGame Framework=====
+=======================================================================================
+*NET-PKG
+Tag   +    Len         +          Value
+(1B)     (1|2|4B)                 (...)
+|<-    head     ->|           |<- data ->|
+
+
+*Tag: 1Byte
+**Tag: 0 0 0 0 0 | 0 0 0  high-5bits:option , low-3bits: Bytes of len
+
+*Len: 1 or 2 or 4Byte
+**len [1,0xFF] :1Byte
+**len (0xFF , 0xFFFF] :2Byte
+**len (0xFFFF , 0xFFFFFFFF]: 4Byte
+
+*/
+//#include <stdio.h>
+//#include <arpa/inet.h>
+#include <string.h>
+
+#define TAG_LEN  1
+#define INT_MAX  0x7FFFFFF0
+//pkg option
+#define PKG_OP_NORMAL 0  //normal pkg
+#define PKG_OP_ECHO   1  //echo client <-> tcp-serv
+#define PKG_OP_STAT   2  //display tcp server stat
+#define PKG_OP_MAX   32 //max option value
+
+//STAT_KEY
+#define FETCH_STAT_KEY  "cs...39&suomei...32&withdraw"
+
+static int pack_head(char *buff , int buff_len , unsigned int data_len , unsigned char pkg_option);
+static int unpack_head(char *buff , int buff_len , unsigned char *tag , unsigned int *data_len);
+
+
+/*
+Pack pkg_data to pkg_buff
+@pkg_buff:dst buff
+@buff_len:dst buff len
+@pkg_data:src data
+@data_len:src data len
+@pkg_type: ==0 normal pkg.  > 0 PKG_OP_XX means special pkg to server
+@return: -1:failed -2:buff_len not enough >0:success(pkg_len)
+*/
+int PackPkg(char *pkg_buff, int buff_len , char *pkg_data, int data_len , unsigned char pkg_option)
+{
+    int head_len = -1;
+
+    //pack head
+    head_len = pack_head(pkg_buff , buff_len , data_len , pkg_option);
+    if(head_len<=0)
+        return -1;
+
+    //buff enough?
+    if(buff_len < head_len + data_len)
+        return -2;
+
+    //copy
+    memcpy(&pkg_buff[head_len] , pkg_data , data_len);
+    return head_len + data_len;
+}
+
+/*
+UnPackPkg from raw data
+@raw:raw data which will unpack from
+@raw_len:raw data len
+@pkg_buff:dst buff which store pkg-data if success
+@buff_len:dst buff len
+@pkg_len:real pkg-len unpacked if success
+@return:pkg_tag
+pkg_tag 0xFF:error , 0xEF:buff_len not enough 0:raw data not ready , else:success and valid tag of pkg
+         if success , tag is valid and will copy data to pkg_buff and set pkg_data_len and pkg_len
+*/
+unsigned char UnPackPkg(char *raw , int raw_len , char *pkg_buff , int buff_len , int *pkg_data_len , int *pkg_len)
+{
+    int head_len = 0;
+    int data_len = 0;
+    unsigned char tag = 0;
+
+    //Get Head
+    head_len = unpack_head(raw , raw_len , &tag , &data_len);
+    if(head_len < 0)
+        return 0xFF;
+
+    //Not Ready
+    if(head_len == 0)
+        return 0;
+
+    //raw not enough
+    if(raw_len < data_len + head_len)
+        return 0;
+
+    //buff_len not enough
+    if(buff_len < data_len)
+        return 0xEF;
+
+    //cpy
+    memcpy(pkg_buff , &raw[head_len] , data_len);
+    *pkg_data_len = data_len;
+    *pkg_len = data_len + head_len;
+    return tag;
+}
+
+//Get pkg-option
+//@return:PKG_OP_XX
+unsigned char PkgOption(unsigned char tag)
+{
+	return tag >> 3;
+}
+
+//predict pkg-len according to data_len
+//-1:if data_len illegal else pkg-len
+int GetPkgLen(int data_len)
+{
+	if(data_len < 0 || data_len >= INT_MAX)
+		return -1;
+
+	if(data_len <= 0xFF)
+		return TAG_LEN + 1 + data_len;
+
+	if(data_len <= 0xFFFF)
+		return TAG_LEN + 2 + data_len;
+
+	if(data_len >= INT_MAX)
+		return -1;
+
+	return TAG_LEN + 4 + data_len;
+}
+
+
+
+/*---------------------STATIC FUNCT------------------------*/
+static int is_little_endian()
+{
+    short v = 1;
+    return ((char *)&v)[0];
+}
+
+/*
+pack head to buff
+@return:  -1:failed else:success(head_len)
+*/
+static int pack_head(char *buff , int buff_len , unsigned int data_len , unsigned char pkg_option)
+{
+    unsigned short u16 = 0;
+
+    if(data_len == 0)
+        return -1;
+
+    if(pkg_option >= PKG_OP_MAX)
+        return -1;
+
+    //lenth:1Byte
+    if(data_len <= 0xFF)
+    {
+        if(buff_len < TAG_LEN+1)
+            return -1;
+
+        buff[0] = 0x01; //tag
+        buff[0] |= (pkg_option << 3);
+        buff[1] = (unsigned char)data_len;
+        return 1 + TAG_LEN;
+    }
+
+    //lenth:2Byte
+    if(data_len <= 0xFFFF)
+    {
+        if(buff_len < TAG_LEN+2)
+    	    return -1;
+
+    	buff[0] = 0x02; //tag
+    	buff[0] |= (pkg_option << 3);
+    	u16 = (unsigned short)data_len;
+    	if(is_little_endian())
+    	{
+    	    buff[1] =  ((char *)&u16)[1];
+    	    buff[2] =  ((char *)&u16)[0];
+    	}
+    	else
+    	{
+    	    buff[1] =  ((char *)&u16)[0];
+            buff[2] =  ((char *)&u16)[1];
+    	}
+    	return TAG_LEN + 2;
+    }
+
+    //lenth:4Byte
+    if(buff_len < TAG_LEN+4)
+    	return -1;
+
+    buff[0] = 0x04; //tag
+    buff[0] |= (pkg_option << 3);
+    if(is_little_endian())
+    {
+        buff[1] =  ((char *)&data_len)[3];
+        buff[2] =  ((char *)&data_len)[2];
+        buff[3] =  ((char *)&data_len)[1];
+        buff[4] =  ((char *)&data_len)[0];
+    }
+    else
+    {
+        buff[1] =  ((char *)&data_len)[0];
+        buff[2] =  ((char *)&data_len)[1];
+        buff[3] =  ((char *)&data_len)[2];
+        buff[4] =  ((char *)&data_len)[3];
+    }
+
+    return TAG_LEN + 4;
+
+}
+
+/*
+unpack head from buff
+@return 0:data not-ready, -1:failed , ELSE:success (head_len)
+*/
+static int unpack_head(char *buff , int buff_len , unsigned char *tag , unsigned int *data_len)
+{
+    unsigned char b_len;
+    if(buff_len < TAG_LEN)
+        return 0;
+
+    //bytes of len
+    b_len = buff[0] & 0x07;
+    if(b_len!=1 && b_len!=2 && b_len!=4)
+        return -1;
+
+    //1Byte
+    if(b_len == 0x01)
+    {
+        if(buff_len < TAG_LEN+1)
+    	    return 0;
+
+        *tag = buff[0];
+        *data_len = (unsigned int)buff[1];
+        return TAG_LEN + 1;
+    }
+
+    //2Byte
+    if(b_len == 0x02)
+    {
+    	if(buff_len < TAG_LEN+2)
+    		return 0;
+
+    	*tag = buff[0];
+    	if(is_little_endian())  //little endian reverse
+    	{
+    	    ((char *)data_len)[1] = buff[1];
+    	    ((char *)data_len)[0] = buff[2];
+    	}
+    	else
+    	{
+    	    ((char *)data_len)[0] = buff[1];
+            ((char *)data_len)[1] = buff[2];
+    	}
+
+    	return TAG_LEN + 2;
+    }
+
+    //4Byte
+	if(buff_len < TAG_LEN+4)
+		return 0;
+
+	*tag = buff[0];
+    if(is_little_endian())  //little endian reverse
+    {
+        ((char *)data_len)[3] = buff[1];
+        ((char *)data_len)[2] = buff[2];
+        ((char *)data_len)[1] = buff[3];
+        ((char *)data_len)[0] = buff[4];
+    }
+    else
+    {
+        ((char *)data_len)[0] = buff[1];
+        ((char *)data_len)[1] = buff[2];
+        ((char *)data_len)[2] = buff[3];
+        ((char *)data_len)[3] = buff[4];
+    }
+	return TAG_LEN + 4;
+}

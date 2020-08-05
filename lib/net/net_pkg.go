@@ -19,8 +19,8 @@ const (
 
 /* NET-PKG
 Tag   +    Len         +          Value
-(1B)     (1|2|4B)              (...)
-|<-    head     ->|        |<- data ->|
+(1B)     (1|2|4B)                 (...)
+|<-    head     ->|           |<- data ->|
 
 
 *Tag: 1Byte
@@ -36,18 +36,18 @@ Tag   +    Len         +          Value
 /*
 Pack pkg_data to pkg.
 @pkg_type: ==0 normal pkg.  > 0 PKG_OP_XX means special pkg to server
-@return: -1:failed else:success(pkg_len)
+@return: -1:failed -2:buff_len not enough >0:success(pkg_len)
 */
 func PackPkg(pkg_buff []byte, pkg_data []byte, pkg_option uint8) int {
 	//pack head
 	head_len := pack_head(pkg_buff, uint32(len(pkg_data)), pkg_option)
-	if head_len < 0 {
+	if head_len <= 0 {
 		return -1
 	}
 
 	//pkg enough?
 	if len(pkg_buff) < head_len+len(pkg_data) {
-		return -1
+		return -2
 	}
 
 	//copy data
