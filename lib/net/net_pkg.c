@@ -16,8 +16,6 @@ Tag   +    Len         +          Value
 **len (0xFFFF , 0xFFFFFFFF]: 4Byte
 
 */
-//#include <stdio.h>
-//#include <arpa/inet.h>
 #include <string.h>
 
 #define TAG_LEN  1
