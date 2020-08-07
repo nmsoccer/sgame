@@ -1,3 +1,16 @@
+/*
+ * simple_cli.go
+ *
+ * This is a Demo Client Connect SGame Server Using Go.
+ * Test Ping Proto.
+ *
+ * Build:  go build simple_cli.go
+           ./simple_cli -p <port>
+ * More Info:https://github.com/nmsoccer/sgame/wiki/mulit-connect
+ * Created on: 2020.8.6
+ * Author: nmsoccer
+*/
+
 package main
 
 import (
@@ -9,18 +22,6 @@ import (
 	"strconv"
 	"time"
 )
-
-/*
- * simple_cli.go
- *
- * This is a Demo Client Connect SGame Server Using Go.
- * Test Ping Proto.
- *
- * Build:  go build simple_cli.go
- * More Info:https://github.com/nmsoccer/sgame/wiki/mulit-connect
- *  Created on: 2020.8.6
- *      Author: nmsoccer
- */
 
 
 const (
@@ -58,30 +59,13 @@ func main() {
 	defer conn.Close();
 
 	var cmd string
-	curr_ts := time.Now().Unix();
+	curr_ts := time.Now().UnixNano()/1000000;
 	//Test Ping
 	/*
 	 * create json request refer sgame/proto/cs/: api.go and ping.proto.go
 	 */
 
-
-	/*Encode Method 1 using csLib
-	var gmsg cs.GeneralMsg
-	gmsg.ProtoId = cs.CS_PROTO_PING_REQ
-	psub := new(cs.CSPingReq)
-	psub.TimeStamp = curr_ts;
-	gmsg.SubMsg = psub
-
-	//encode
-	enc_data, err := cs.EncodeMsg(&gmsg)
-	if err != nil {
-		fmt.Printf("encode failed! err:%v\n", err)
-		return
-	}
-	cmd = string(enc_data)
-	*/
-
-	//Encode Method 2 manually
+	//Encode  cmd
 	cmd = fmt.Sprintf("{\"proto\":1 , \"sub\":{\"ts\":%d}}" , curr_ts);
 	enc_data := []byte(cmd);
 
@@ -97,7 +81,7 @@ func main() {
 	if err != nil {
 		fmt.Printf("send cmd pkg failed!  err:%v\n",  err)
 	} else {
-		fmt.Printf("<< send cmd:%s \n" , cmd)
+		fmt.Printf(">> send cmd:%s \n" , cmd)
 	}
 
 	//read
@@ -111,29 +95,21 @@ func main() {
 
 	//Unpack
 	tag , pkg_data, pkg_len := lnet.UnPackPkg(read_buff[:n])
-	fmt.Printf(">> from server:%s data_len:%d pkg_len:%d tag:%d\n" , string(pkg_data) ,  len(pkg_data) , pkg_len ,
+	if(tag==0xFF){
+		fmt.Printf("unpack failed!\n");
+		return;
+	}
+	if(tag == 0xEF){
+		fmt.Printf("pkg_buff not enough!\n");
+		return;
+	}
+	if(tag == 0){
+		fmt.Printf("data not ready!\n");
+		return;
+	}
+	fmt.Printf("<< from server:%s data_len:%d pkg_len:%d tag:%d\n" , string(pkg_data) ,  len(pkg_data) , pkg_len ,
 		tag);
 
-	/* more if wanna Decode json
-	var gmsg2 cs.GeneralMsg
-	err = cs.DecodeMsg(pkg_data, &gmsg2)
-	if err != nil {
-		fmt.Printf("decode failed! err:%v\n", err)
-		return;
-	}
-
-	//print
-	if gmsg2.ProtoId != cs.CS_PROTO_PING_RSP {
-		fmt.Printf("proto:%d not valid!\n" , gmsg2.ProtoId);
-		return;
-	}
-	prsp, ok := gmsg.SubMsg.(*cs.CSPingRsp)
-	if ok {
-		fmt.Printf("ping: ts:%d\n", prsp.TimeStamp)
-	}
-	 */
-
-	time.Sleep(1 * time.Second);
 	return;
 }
 

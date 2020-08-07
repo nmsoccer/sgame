@@ -5,9 +5,10 @@
  * Test Ping Proto.
  *
  * Build:  gcc simple_cli.c ../lib/net/net_pkg.c -o simple_cli
+           ./simple_cli <port>
  * More Info:https://github.com/nmsoccer/sgame/wiki/mulit-connect
- *  Created on: 2020.8.6
- *      Author: nmsoccer
+ * Created on: 2020.8.6
+ * Author: nmsoccer
  */
 #include <stdio.h>
 #include <string.h>
@@ -43,7 +44,7 @@ int main(int argc , char **argv)
 	char recv_buff[2048] = {0};
 	unsigned char tag = 0;
 
-
+    struct timeval tv;
 	int ret = -1;
 	long curr_ts = 0;
 	if(argc != 2)
@@ -84,9 +85,10 @@ int main(int argc , char **argv)
 	//Test Ping
 	/*
 	 * create json request refer sgame/proto/cs/: api.go and ping.proto.go
-	 */
-	curr_ts = time(NULL);
-	snprintf(cmd , sizeof(cmd) , "{\"proto\":1 , \"sub\":{\"ts\":%d}}" , curr_ts);
+	*/
+    ret = gettimeofday(&tv, NULL);
+	curr_ts = tv.tv_sec*1000 + tv.tv_usec/1000;
+	snprintf(cmd , sizeof(cmd) , "{\"proto\":1 , \"sub\":{\"ts\":%ld}}" , curr_ts);
 
 	//pack cmd
 	pkg_len = PackPkg(pkg_buff, sizeof(pkg_buff) , cmd , strlen(cmd) , 0);
@@ -95,8 +97,6 @@ int main(int argc , char **argv)
 		printf("pack pkg failed! ret:%d cmd:%s\n" , pkg_len , cmd);
 		return -1;
 	}
-	printf(">> pack cmd:%s success! pkg_len:%d\n" , cmd , pkg_len);
-
 
 	//send to server
 	ret = send(conn_fd , pkg_buff , pkg_len , 0);
@@ -105,6 +105,7 @@ int main(int argc , char **argv)
 		printf("send %s failed! err:%s\n" , cmd , strerror(errno));
 		return -1;
 	}
+	printf(">>send cmd:%s success!\n" , cmd);
 
 	//recv
 	memset(recv_buff , 0 , sizeof(recv_buff));
@@ -133,10 +134,14 @@ int main(int argc , char **argv)
 		printf("pkg_buff not enough!\n");
 		return -1;
 	}
-	printf("<< recv from server: %s data_len:%d pkg_len:%d tag:%d\n" , pkg_buff , data_len , pkg_len , tag);
+	if(tag == 0)
+	{
+	    printf("data not ready!\n");
+        return -1;
+	}
+	printf("<<recv from server: %s data_len:%d pkg_len:%d tag:%d\n" , pkg_buff , data_len , pkg_len , tag);
 
 
-	sleep(1);
 	close(conn_fd);
 	return 0;
 }

@@ -1,4 +1,24 @@
+/*
+=====This is a GO API file for parse server-client transport pkg in SGame Framework=====
+* more info:https://github.com/nmsoccer/sgame
+=======================================================================================
+NET-PKG
+Tag   +    Len         +          Value
+(1B)     (1|2|4B)                 (...)
+|<-    head     ->|           |<- data ->|
+
+
+*Tag: 1Byte
+**Tag: 0 0 0 0 0 | 0 0 0  high-5bits:option , low-3bits: Bytes of len
+
+*Len: 1 or 2 or 4Byte
+**len [1,0xFF] :1Byte
+**len (0xFF , 0xFFFF] :2Byte
+**len (0xFFFF , 0xFFFFFFFF]: 4Byte
+
+*/
 package comm
+
 
 import (
 	"encoding/binary"
@@ -17,25 +37,10 @@ const (
 	FETCH_STAT_KEY = "cs...39&suomei...32&withdraw"
 )
 
-/* NET-PKG
-Tag   +    Len         +          Value
-(1B)     (1|2|4B)                 (...)
-|<-    head     ->|           |<- data ->|
-
-
-*Tag: 1Byte
-**Tag: 0 0 0 0 0 | 0 0 0  high-5bits:option , low-3bits: Bytes of len
-
-*Len: 1 or 2 or 4Byte
-**len [1,0xFF] :1Byte
-**len (0xFF , 0xFFFF] :2Byte
-**len (0xFFFF , 0xFFFFFFFF]: 4Byte
-
-*/
 
 /*
 Pack pkg_data to pkg.
-@pkg_type: ==0 normal pkg.  > 0 PKG_OP_XX means special pkg to server
+@pkg_option: ==0 normal pkg.  > 0 PKG_OP_XX means special pkg to server
 @return: -1:failed -2:buff_len not enough >0:success(pkg_len)
 */
 func PackPkg(pkg_buff []byte, pkg_data []byte, pkg_option uint8) int {

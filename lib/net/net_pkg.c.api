@@ -40,7 +40,7 @@ Pack pkg_data to pkg_buff
 @buff_len:dst buff len
 @pkg_data:src data
 @data_len:src data len
-@pkg_type: ==0 normal pkg.  > 0 PKG_OP_XX means special pkg to server
+@pkg_option: ==0 normal pkg.  > 0 PKG_OP_XX means special pkg to server
 @return: -1:failed -2:buff_len not enough >0:success(pkg_len)
 */
 int PackPkg(char *pkg_buff, int buff_len , char *pkg_data, int data_len , unsigned char pkg_option)
@@ -113,7 +113,7 @@ unsigned char PkgOption(unsigned char tag)
 //-1:if data_len illegal else pkg-len
 int GetPkgLen(int data_len)
 {
-	if(data_len < 0 || data_len >= INT_MAX)
+	if(data_len <= 0 || data_len >= INT_MAX)
 		return -1;
 
 	if(data_len <= 0xFF)
