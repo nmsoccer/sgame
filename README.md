@@ -8,7 +8,7 @@ A Simple Game Framework  一个简单的游戏框架
 * **协议兼容** 在server进程之间使用protobuf进行消息序列化，在server与客户端之间使用json编码传输，尽力提供良好的兼容
 * **监控管理** 提供一套发布与管理工具，用于多游戏进程的配置管理与业务进程的监控 
 * **测试终端** 提供了不同语言的CS交互封装库，目前提供了GO,C,JAVA的封装API，同时也编写了对应的简单客户端用于代码演示        
-* **未完待续**
+* **WIKI** 更多内容请参见WIKI：https://github.com/nmsoccer/sgame/wiki
 
 ### 简单架构  
 这是一个简单的架构图，主要以各group里的connect_serv,logic_serv,db_serv三层逻辑为核心，框架功能也以这三层的实现为主。同时为表现扩展性这里部署了两组，它们之间通过disp互相通信.  
