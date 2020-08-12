@@ -156,7 +156,8 @@ func RecvLogoutReq(pconfig *Config, plogout *ss.MsgLogoutReq) {
 	//dispatch
 	switch plogout.Reason {
 	case ss.USER_LOGOUT_REASON_LOGOUT_CONN_CLOSED:
-		//nothing to do
+		//return. wait for re-connect
+		return;
 	case ss.USER_LOGOUT_REASON_LOGOUT_CLIENT_EXIT:
 		//back to client
 		SendLogoutRsp(pconfig, plogout.Uid, plogout.Reason, "fuck")

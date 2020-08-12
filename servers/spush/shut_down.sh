@@ -10,7 +10,7 @@ then
   exit 0
 fi
 
-killall $1
+killall -2 $1
 sleep 1
 result=`ps aux |grep "./$1" | grep -v 'grep'` 
 if [[ -z $result ]]

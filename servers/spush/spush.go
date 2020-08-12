@@ -389,9 +389,9 @@ func gen_pkg(pproc *Proc) int {
 		fmt.Printf("cp failed! err:%s cmd:%v\n", err, cp_cmd.Args)
 		push_lock.Lock()
 		push_total.complete += 1
-		push_lock.Unlock()
 		push_total.push_map[pproc.Name].status = PUSH_ERR
 		push_total.push_map[pproc.Name].info = "copy failed:" + err.Error()
+		push_lock.Unlock()
 
 		return -1
 	}
@@ -412,9 +412,9 @@ func gen_pkg(pproc *Proc) int {
 		fmt.Printf("exe push failed! err:%s cmd:%v\n", err, push_cmd.Args)
 		push_lock.Lock()
 		push_total.complete += 1
-		push_lock.Unlock()
 		push_total.push_map[pproc.Name].status = PUSH_ERR
 		push_total.push_map[pproc.Name].info = "dispatch failed:" + err.Error()
+		push_lock.Unlock()
 		v_print("complete:%d <%s>\n", push_total.complete, pproc.Name)
 		return -1
 	}

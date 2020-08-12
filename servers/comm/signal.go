@@ -14,7 +14,7 @@ const (
 )
 
 type ProfileConfig struct{
-	stat bool //false:closed true:open
+	Stat bool //false:closed true:open
 	file_cpu * os.File
 	file_mem * os.File
 }
@@ -35,7 +35,7 @@ func HandleSignal(pconfig *CommConfig) {
 			    	    pconfig.ChInfo <- INFO_PPROF;
 			    	case syscall.SIGUSR1:    
 			    	    log.Info("recv signal usr1!");
-			    	    pconfig.ChInfo <- INFO_USR1;
+			    	    pconfig.ChInfo <- INFO_RELOAD_CFG;
 			    	case syscall.SIGUSR2:    
 			    	    log.Info("recv signal usr2!");
 			    	    pconfig.ChInfo <- INFO_USR2;
@@ -52,7 +52,7 @@ func HandleSignal(pconfig *CommConfig) {
 func DefaultHandleProfile(pconfig *CommConfig) bool {
 
     //start profile
-    if !pconfig.PProf.stat {
+    if !pconfig.PProf.Stat {
     	return StartPProf(pconfig);
 	}
 
@@ -81,7 +81,7 @@ func StartPProf(pconfig *CommConfig) bool {
 	profcfg := &pconfig.PProf;
 
 	//check stat
-	if profcfg.stat {
+	if profcfg.Stat {
 		log.Err("%s failed! prof is opended!" , _func_);
 		return false;
 	}
@@ -110,18 +110,18 @@ func StartPProf(pconfig *CommConfig) bool {
 		return false;
 	}
 
-	profcfg.stat = true;
+	profcfg.Stat = true;
     log.Info("%s starts success!" , _func_);
     return true;
 }
 
 func EndPProf(pconfig *CommConfig) bool {
-	var _func_ = "<StartPProf>";
+	var _func_ = "<EndPProf>";
 	var err error
 	log := pconfig.Log;
 	profcfg := &pconfig.PProf;
 
-	if !profcfg.stat {
+	if !profcfg.Stat {
 		log.Err("%s not open!" , _func_);
 		return false;
 	}
@@ -141,7 +141,7 @@ func EndPProf(pconfig *CommConfig) bool {
 	}
 
     //close
-    profcfg.stat = false;
+    profcfg.Stat = false;
     CloseProFile(pconfig);
 	log.Info("%s finish!" , _func_);
 	return true;

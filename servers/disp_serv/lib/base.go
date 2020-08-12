@@ -8,22 +8,24 @@ import (
 )
 
 type FileConfig struct {
-	LogicServList  []int      `json:"logic_serv_list"`
-	LogFile    string   `json:"log_file"`
-	ManageAddr []string `json:"manage_addr"`
-	MonitorInv int      `json:"monitor_inv"` //monitor interval seconds
+	LogicServList []int    `json:"logic_serv_list"`
+	LogFile       string   `json:"log_file"`
+	ManageAddr    []string `json:"manage_addr"`
+	MonitorInv    int      `json:"monitor_inv"` //monitor interval seconds
 }
 
 type Config struct {
 	//comm
-	NameSpace  string
-	ProcId     int
-	ProcName   string
-	ConfigFile string
-	Daemon bool
-	FileConfig *FileConfig
-	Comm       *comm.CommConfig
-	ReportServ *comm.ReportServ //report to manger
+	NameSpace      string
+	ProcId         int
+	ProcName       string
+	ConfigFile     string
+	Daemon         bool
+	FileConfig     *FileConfig
+	Comm           *comm.CommConfig
+	ReportCmd      string //used for report cmd
+	ReportCmdToken int64
+	ReportServ     *comm.ReportServ //report to manger
 	//local
 }
 
@@ -69,20 +71,19 @@ func LocalSet(pconfig *Config) bool {
 	var _func_ = "<LocalSet>"
 	log := pconfig.Comm.Log
 
-
 	//start report serv
-	pconfig.ReportServ = comm.StartReport(pconfig.Comm, pconfig.ProcId, pconfig.ProcName, pconfig.FileConfig.ManageAddr, comm.REPORT_METHOD_ALL ,
-		pconfig.FileConfig.MonitorInv);
+	pconfig.ReportServ = comm.StartReport(pconfig.Comm, pconfig.ProcId, pconfig.ProcName, pconfig.FileConfig.ManageAddr, comm.REPORT_METHOD_ALL,
+		pconfig.FileConfig.MonitorInv)
 	if pconfig.ReportServ == nil {
-		log.Err("%s fail! start report failed!" , _func_);
-		return false;
+		log.Err("%s fail! start report failed!", _func_)
+		return false
 	}
 	pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_START, time.Now().Unix(), "", nil)
 
 	//add ticker
 	pconfig.Comm.TickPool.AddTicker("heart_beat", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_HEART_BEAT_DEFAULT, SendHeartBeatMsg, pconfig)
 	pconfig.Comm.TickPool.AddTicker("report_sync", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_REPORT_SYNC_DEFAULT, ReportSyncServer, pconfig)
-	pconfig.Comm.TickPool.AddTicker("recv_cmd" , comm.TICKER_TYPE_CIRCLE , 0 , comm.PERIOD_RECV_REPORT_CMD_DEFAULT , RecvReportCmd , pconfig);
+	pconfig.Comm.TickPool.AddTicker("recv_cmd", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_RECV_REPORT_CMD_DEFAULT, RecvReportCmd, pconfig)
 	return true
 }
 
@@ -137,12 +138,12 @@ func ServerStart(pconfig *Config) {
 }
 
 //After ReLoad Config If Need Handle
-func AfterReLoadConfig(pconfig *Config , old_config *FileConfig , new_config *FileConfig)  {
-	var _func_ = "<AfterReLoadConfig>";
-	log := pconfig.Comm.Log;
+func AfterReLoadConfig(pconfig *Config, old_config *FileConfig, new_config *FileConfig) {
+	var _func_ = "<AfterReLoadConfig>"
+	log := pconfig.Comm.Log
 
-	log.Info("%s finish!" , _func_);
-	return;
+	log.Info("%s finish!", _func_)
+	return
 }
 
 /*----------------Static Func--------------------*/
@@ -154,21 +155,62 @@ func handle_info(pconfig *Config) {
 		switch m {
 		case comm.INFO_EXIT:
 			ServerExit(pconfig)
-		case comm.INFO_USR1:
+		case comm.INFO_RELOAD_CFG:
 			log.Info(">>reload config!")
-			var new_config FileConfig;
-			ret := comm.LoadJsonFile(pconfig.ConfigFile , &new_config , pconfig.Comm);
+			var new_config FileConfig
+			ret := comm.LoadJsonFile(pconfig.ConfigFile, &new_config, pconfig.Comm)
 			if !ret {
-				log.Err("%s reload config failed!" , _func_)
+				log.Err("%s reload config failed!", _func_)
 			} else {
-				AfterReLoadConfig(pconfig , pconfig.FileConfig , &new_config);
-				*(pconfig.FileConfig) = new_config;
+				AfterReLoadConfig(pconfig, pconfig.FileConfig, &new_config)
+				*(pconfig.FileConfig) = new_config
+			}
+			//from manager
+			if pconfig.ReportCmdToken > 0 {
+				if ret {
+					log.Info("%s cmd:%s from manager success!", _func_, pconfig.ReportCmd)
+					pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP, pconfig.ReportCmdToken, comm.CMD_STAT_SUCCESS, nil)
+				} else {
+					pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP, pconfig.ReportCmdToken, comm.CMD_STAT_FAIL, nil)
+				}
+				pconfig.ReportCmdToken = 0
+				pconfig.ReportCmd = ""
 			}
 		case comm.INFO_USR2:
 			log.Info(">>info usr2")
 		case comm.INFO_PPROF:
-			log.Info(">>profiling");
-			comm.DefaultHandleProfile(pconfig.Comm);
+			log.Info(">>profiling")
+			//from manager
+			if pconfig.ReportCmdToken > 0 {
+				for {
+					//alread  start
+					if pconfig.ReportCmd == comm.CMD_START_GPROF && pconfig.Comm.PProf.Stat == true {
+						log.Info("%s already start profile!", _func_)
+						pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP, pconfig.ReportCmdToken, comm.CMD_STAT_NOP, nil)
+						break
+					}
+
+					//alread  end
+					if pconfig.ReportCmd == comm.CMD_END_GRPOF && pconfig.Comm.PProf.Stat == false {
+						log.Info("%s already end profile!", _func_)
+						pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP, pconfig.ReportCmdToken, comm.CMD_STAT_NOP, nil)
+						break
+					}
+
+					ret := comm.DefaultHandleProfile(pconfig.Comm)
+					if ret {
+						log.Info("%s cmd:%s from manager success!", _func_, pconfig.ReportCmd)
+						pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP, pconfig.ReportCmdToken, comm.CMD_STAT_SUCCESS, nil)
+					} else {
+						pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP, pconfig.ReportCmdToken, comm.CMD_STAT_FAIL, nil)
+					}
+					break
+				} //end for
+				pconfig.ReportCmdToken = 0
+				pconfig.ReportCmd = ""
+			} else { //from local signal
+				comm.DefaultHandleProfile(pconfig.Comm)
+			}
 		default:
 			pconfig.Comm.Log.Info("unknown msg")
 		}

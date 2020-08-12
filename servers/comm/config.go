@@ -22,10 +22,10 @@ const (
 
 	DEFAULT_SERVER_SLEEP_IDLE=5 //ms. server sleeps when idle 
 	
-    INFO_EXIT = 0 //0 server exit
-    INFO_USR1 = 1 //1 server reload config
-    INFO_USR2 = 2 //2 reload tables
-    INFO_PPROF= 3 //3 go pprof
+    INFO_EXIT = 0 //0 server exit #sig-int
+    INFO_RELOAD_CFG = 1 //1 server reload config #sig-usr1
+    INFO_USR2 = 2 //2 sig-usr2 #sig-usr2
+    INFO_PPROF= 3 //3 go pprof #sig-term
 )
 
 
@@ -59,7 +59,8 @@ func InitCommConfig(log_file string , name_space string , proc_id int) *CommConf
 	pconfig.StartTs = time.Now().Unix();
 	
 	//log
-    lp := log.OpenLog(log_file);
+    lp := log.OpenLog(log_file , log.LOG_DEFAULT_FILT_LEVEL , log.LOG_DEFAULT_DEGREE , log.LOG_DEFAULT_ROTATE ,
+    	log.LOG_DEFAULT_SIZE);
     if lp == nil {
     	fmt.Printf("open log %s failed!\n" , log_file);
     	return nil;

@@ -65,10 +65,15 @@ function remote_dispatch()
   
   
   #scp files
+  chmod u+x $working_dir/tools/scp.exp
+  echo `pwd`
+  echo "$working_dir/tools/scp.exp $t_host $t_user $t_pass $tar_file  $t_dir"
   $working_dir/tools/scp.exp $t_host $t_user $t_pass $tar_file  $t_dir
+  echo "$working_dir/tools/scp.exp $t_host $t_user $t_pass $md5_file  $t_dir"
   $working_dir/tools/scp.exp $t_host $t_user $t_pass $md5_file  $t_dir
  
   #unzip and exe peer
+  chmod u+x $working_dir/tools/exe_cmd.exp
   remote_cmd="cd $t_dir;tar -zxvf $tar_file;cd $peer_dir;chmod u+x ./$peer_exe;./$peer_exe r $proc_name $m_ip $m_port $t_foot \"$t_cmd\" $task_name"
   $working_dir/tools/exe_cmd.exp $t_host $t_user $t_pass "$remote_cmd" 
  
@@ -95,6 +100,7 @@ function main()
 
   #tool file
   pkg_name=$proc_name.tar.gz
+  rm $pkg_name
   tar -zcvf $pkg_name ./* 1>/dev/null
   if [[ 0 -ne $? ]]
   then

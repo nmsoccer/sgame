@@ -56,6 +56,11 @@ func init() {
 
 
 func ReadClients(pconfig *Config) int64 {
+	defer func() {
+		if err := recover(); err != nil {
+			pconfig.Comm.Log.Fatal("read clients meets panic! err:%v" , err)
+		}
+	}()
 	var _func_ = "<ReadClients>"
 	log := pconfig.Comm.Log
 

@@ -1,7 +1,7 @@
 {
   "task":"sgame" , 
   "deploy_host":"" ,
-  "deploy_timeout":60, 
+  "deploy_timeout":180, 
   "remote_user":"nmsoccer" ,
   "remote_pass":"****" ,
   

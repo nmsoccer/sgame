@@ -22,6 +22,11 @@ func init() {
 }
 
 func RecvMsg(pconfig *Config) int64 {
+	defer func() {
+		if err := recover(); err != nil {
+			pconfig.Comm.Log.Fatal("RecvMsg meets panic! err:%v" , err)
+		}
+	}()
 	var _func_ = "RecvMsg"
 	var start_time int64
 

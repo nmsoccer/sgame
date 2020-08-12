@@ -9,6 +9,7 @@
     {"name":"conn_serv" , "bin":["./shut_down.sh"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg_shut/conn/" , "copy_cfg":0 , "cmd":"./shut_down.sh conn_serv"},
 	{"name":"logic_serv" , "bin":["./shut_down.sh"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg_shut/logic/" , "copy_cfg":0 , "cmd":"./shut_down.sh logic_serv"},        
     {"name":"db_logic_serv" ,   "bin":["./shut_down.sh"] , "host":"" , "host_dir":"/home/nmsoccer/sg_shut/db/" , "copy_cfg":0 , "cmd":"./shut_down.sh db_serv"},
+	{"name":"disp_serv" ,   "bin":["./shut_down.sh"] , "host":"" , "host_dir":"/home/nmsoccer/sg_shut/disp/" , "copy_cfg":0 , "cmd":"./shut_down.sh disp_serv"},
     {"name":"shut_manage" ,   "bin":["./shut_down.sh"] , "host":"" , "host_dir":"/home/nmsoccer/sg_shut/manage/" , "copy_cfg":0 , "cmd":"./shut_down.sh manage_serv"}	
   ],
 

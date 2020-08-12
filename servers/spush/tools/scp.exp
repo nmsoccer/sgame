@@ -22,7 +22,7 @@ expect {
   
 }
 
-
+set timeout -1
 spawn scp ${local_file} ${user}@${ip}:${remote_dir}
 expect {
   "password:" {

@@ -22,17 +22,19 @@ type FileConfig struct {
 
 type Config struct {
 	//comm
-	NameSpace  string
-	ProcId     int
-	ProcName   string
-	ConfigFile string
-	Daemon     bool
-	FileConfig *FileConfig
-	Comm       *comm.CommConfig
-	ReportServ *comm.ReportServ //report to manger
+	NameSpace      string
+	ProcId         int
+	ProcName       string
+	ConfigFile     string
+	Daemon         bool
+	FileConfig     *FileConfig
+	Comm           *comm.CommConfig
+	ReportCmd      string //used for report cmd
+	ReportCmdToken int64
+	ReportServ     *comm.ReportServ //report to manger
 	//local
-	TableMap   comm.TableMap
-	Users      *OnLineList
+	TableMap comm.TableMap
+	Users    *OnLineList
 }
 
 //Comm Config Setting
@@ -186,7 +188,7 @@ func handle_info(pconfig *Config) {
 		switch m {
 		case comm.INFO_EXIT:
 			ServerExit(pconfig)
-		case comm.INFO_USR1:
+		case comm.INFO_RELOAD_CFG:
 			log.Info(">>reload config!")
 			var new_config FileConfig
 			ret := comm.LoadJsonFile(pconfig.ConfigFile, &new_config, pconfig.Comm)
@@ -196,12 +198,53 @@ func handle_info(pconfig *Config) {
 				AfterReLoadConfig(pconfig, pconfig.FileConfig, &new_config)
 				*(pconfig.FileConfig) = new_config
 			}
+			//from manager
+			if pconfig.ReportCmdToken > 0 {
+				if ret {
+					log.Info("%s cmd:%s from manager success!", _func_, pconfig.ReportCmd)
+					pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP, pconfig.ReportCmdToken, comm.CMD_STAT_SUCCESS, nil)
+				} else {
+					pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP, pconfig.ReportCmdToken, comm.CMD_STAT_FAIL, nil)
+				}
+				pconfig.ReportCmdToken = 0
+				pconfig.ReportCmd = ""
+			}
 		case comm.INFO_USR2:
 			log.Info(">>reload tables")
 			comm.ReLoadTableFiles(pconfig.TableMap, pconfig.Comm)
 		case comm.INFO_PPROF:
 			log.Info(">>profiling")
-			comm.DefaultHandleProfile(pconfig.Comm)
+			//from manager
+			if pconfig.ReportCmdToken > 0 {
+				for {
+					//alread  start
+					if pconfig.ReportCmd == comm.CMD_START_GPROF && pconfig.Comm.PProf.Stat == true {
+						log.Info("%s already start profile!", _func_)
+						pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP, pconfig.ReportCmdToken, comm.CMD_STAT_NOP, nil)
+						break
+					}
+
+					//alread  end
+					if pconfig.ReportCmd == comm.CMD_END_GRPOF && pconfig.Comm.PProf.Stat == false {
+						log.Info("%s already end profile!", _func_)
+						pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP, pconfig.ReportCmdToken, comm.CMD_STAT_NOP, nil)
+						break
+					}
+
+					ret := comm.DefaultHandleProfile(pconfig.Comm)
+					if ret {
+						log.Info("%s cmd:%s from manager success!", _func_, pconfig.ReportCmd)
+						pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP, pconfig.ReportCmdToken, comm.CMD_STAT_SUCCESS, nil)
+					} else {
+						pconfig.ReportServ.Report(comm.REPORT_PROTO_CMD_RSP, pconfig.ReportCmdToken, comm.CMD_STAT_FAIL, nil)
+					}
+					break
+				} //end for
+				pconfig.ReportCmdToken = 0
+				pconfig.ReportCmd = ""
+			} else { //from local signal
+				comm.DefaultHandleProfile(pconfig.Comm)
+			}
 		default:
 			pconfig.Comm.Log.Info("unknown msg")
 		}

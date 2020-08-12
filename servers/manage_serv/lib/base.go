@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sgame/servers/comm"
+	"sync"
 	"time"
 )
 
@@ -32,12 +33,14 @@ type Config struct {
 	Daemon bool
 	FileConfig *FileConfig
 	Comm       *comm.CommConfig
+	watch_lock sync.RWMutex //maintain watchmap
 	WatchMap   map[int]*WatchClient
 	Name2Id    map[string]int
 	Recver     *ReportRecver
 	Panel      *PanelServ
 	AuthMap    map[string]*AuthInfo
 	TokenMap   map[string]string
+	CmdMap     map[string] bool //report_proto.go:Report Cmd
 }
 
 //Comm Config Setting
@@ -88,6 +91,9 @@ func LocalSet(pconfig *Config) bool {
 		log.Err("%s parse auth failed!" , _func_)
 		return false;
 	}
+
+	//reg report cmd
+	RegReportCmd(pconfig)
 
 
 	//start recver
@@ -182,7 +188,7 @@ func handle_info(pconfig *Config) {
 		switch m {
 		case comm.INFO_EXIT:
 			ServerExit(pconfig)
-		case comm.INFO_USR1:
+		case comm.INFO_RELOAD_CFG:
 			log.Info(">>reload config!")
 			var new_config FileConfig;
 			ret := comm.LoadJsonFile(pconfig.ConfigFile , &new_config , pconfig.Comm);

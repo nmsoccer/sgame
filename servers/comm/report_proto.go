@@ -26,12 +26,17 @@ const (
 	CMD_STAT_FAIL = "fail"
 	CMD_STAT_NOP = "nop" //no operation
 
-	//Reload Cmd
+	//Report Cmd
 	CMD_CMD_NONE = ""
 	CMD_RELOAD_CFG = "reload_cfg"
     CMD_RELOAD_TAB = "reload_table"
     CMD_STOP_SERVER = "stop_server"
-
+    CMD_LOG_LEVEL = "log_level" //chg log filt level
+    CMD_LOG_DEGREE = "log_degree" //chg log time degree
+    CMD_LOG_ROTATE = "log_rotate" //chg log rotate
+    CMD_LOG_SIZE = "log_size" //chg log size
+	CMD_START_GPROF = "start_gprof"
+	CMD_END_GRPOF = "end_gprof"
 )
 
 //report msg
@@ -97,6 +102,11 @@ type SyncServerMsg struct{
 	StartTime int64	
 }
 
+type CmdExtraMsg struct {
+	ExtraValue string	`json:"ext_value"`
+}
+
+
 
 /*-----------------------------------STATIC--------------------*/
 /*
@@ -107,10 +117,12 @@ func proto2msg(proto_id int) (interface{} , error) {
 	
 	//refer
     switch proto_id {
-    	case  REPORT_PROTO_SYNC_SERVER:
-    	    pmsg = new(SyncServerMsg);
-		default:
-		    return nil , nil;
+    case  REPORT_PROTO_SYNC_SERVER:
+        pmsg = new(SyncServerMsg)
+	case REPORT_PROTO_CMD_REQ:
+		pmsg = new(CmdExtraMsg)
+	default:
+	    return nil , nil;
 	}
         
     //return

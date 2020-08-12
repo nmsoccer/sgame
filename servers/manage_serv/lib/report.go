@@ -213,11 +213,13 @@ func (pserv *ReportRecver) send() {
     	log.Debug("%s target:%d msg:%v" , _func_ , pmsg.ProcId , *pmsg);
 
     	//watcher
+    	pconfig.watch_lock.RLock();
     	pw := pconfig.WatchMap[pmsg.ProcId];
     	if pw == nil {
     		log.Err("%s proc_id illegal! proc:%d proto:%d" , _func_ , pmsg.ProcId , pmsg.ProtoId);
     		continue;
 		}
+		pconfig.watch_lock.RUnlock();
 
 		//check addr
     	if pw.Stat.addr == nil {
@@ -245,11 +247,13 @@ func (precver *ReportRecver) handle_msg(pmsg *comm.ReportMsg, peer_addr *net.UDP
 
 	//get procid
 	proc_id := pmsg.ProcId
+	pconfig.watch_lock.RLock()
 	pwatch, ok := pconfig.WatchMap[proc_id]
 	if !ok {
 		log.Err("%s no watcher %d", _func_, proc_id)
 		return
 	}
+	pconfig.watch_lock.RUnlock()
 
 	//set
 	pstat := &pwatch.Stat
