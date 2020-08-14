@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"fmt"
 	"sgame/proto/ss"
 	"sgame/servers/comm"
 	"time"
@@ -79,6 +80,9 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp, msg []byte) {
 
 		//add
 		pconfig.Users.curr_online++
+		log_content := fmt.Sprintf("%d|%s|LoginFlow|%d|%s|%s|%d" , pconfig.ProcId , pconfig.ProcName , uid , prsp.Name ,
+			prsp.UserInfo.BasicInfo.Addr,curr_ts)
+		pconfig.NetLog.Log("|" , log_content)
 	default:
 		//nothing to do
 	}
@@ -210,6 +214,11 @@ func UserLogout(pconfig *Config , uid int64 , reason ss.USER_LOGOUT_REASON) {
 			log.Err("%s send to db failed! uid:%v reason:%v", _func_, uid, reason)
 		}
 	}
+
+	//nlog
+	log_content := fmt.Sprintf("%d|%s|LogoutFlow|%d|%s|%d|%d" , pconfig.ProcId , pconfig.ProcName , uid , puser_info.BasicInfo.Name ,
+		reason , curr_ts)
+	pconfig.NetLog.Log("|" , log_content)
 
 	//clear online
 	pconfig.Users.curr_online -= 1

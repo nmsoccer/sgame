@@ -14,7 +14,7 @@ import (
 
 const (
 	//if manger count > 1 or no use
-	REPORT_METHOD_SEQ = 1 //report status to manager by fifo
+	REPORT_METHOD_SEQ = 1 //report status to manager which is latest valid
     REPORT_METHOD_ALL = 2 //report status to all manager 
     REPORT_METHOD_MOD = 3 //report status to proc_id%manager_count to manager
     REPORT_METHOD_RAND = 4 //report status to a rand manager

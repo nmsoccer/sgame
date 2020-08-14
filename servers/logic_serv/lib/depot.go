@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"fmt"
 	"sgame/proto/ss"
 	"sgame/servers/comm"
 )
@@ -26,6 +27,8 @@ func InitUserDepot(pconfig *Config , pdepot *ss.UserDepot , uid int64) {
         pdepot.Items[instid].Count = 10;
         pdepot.Items[instid].Instid = instid;
         //log.Debug("%s <%d> item:%v" , _func_ , instid , pdepot.Items[instid]);
+        pconfig.NetLog.Log("|" , fmt.Sprintf("%d|%s|ItemFlow|%d|%d|%d|%d|%d" , pconfig.ProcId , pconfig.ProcName ,
+        	uid , instid , pdepot.Items[instid].Resid , pdepot.Items[instid].Count , 1))
         pdepot.ItemsCount++;
 	}
 

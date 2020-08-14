@@ -136,7 +136,7 @@ func SLogNetOpen(filt_level int, ip string, port int, format int, log_degree int
 	}
 
 	if ip == "" || port <= 0 {
-		fmt.Printf("%s failed! ip:port illegal\n", _func_)
+		fmt.Printf("%s failed! ip:port<%s:%d> illegal\n", _func_ , ip , port)
 		return -1
 	}
 
@@ -167,7 +167,6 @@ func SLogNetOpen(filt_level int, ip string, port int, format int, log_degree int
 	//open
 	slogd := C.slog_open(SLT_NET, C.SLOG_LEVEL(filt_level), &c_option, nil)
 	return int(slogd)
-	//return 0;
 }
 
 /***

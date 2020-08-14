@@ -5,9 +5,10 @@ import (
 )
 
 /*
-* tables desc
-* users:global:[name]  > pass | uid | online_logic
-* user:[uid] >  uid | name | age | sex  | addr
+* ##tables desc##
+* #users:global:[name]  <hash> name | pass | uid | online_logic
+* #user:[uid] <hash>  uid | name | age | sex  | addr | level | blob_info
+* #global:uid <string>
  */
 
 
@@ -56,6 +57,49 @@ func InitRedisDb(arg interface{}) {
 
     return;
 }
+
+//ResetRedis
+func ResetRedis(pconfig *Config , old_config *FileConfig, new_config *FileConfig) {
+	var _func_ = "<ResetRedis>"
+	log := pconfig.Comm.Log
+
+	var new_addr string = ""
+	var new_auth string = ""
+	var new_max  int = 0
+	var new_normal int = 0
+    var reset = false
+
+	//check should reset
+	if old_config.RedisAddr != new_config.RedisAddr {
+		new_addr = new_config.RedisAddr
+		reset = true
+	}
+
+    if old_config.AuthPass != new_config.AuthPass {
+    	new_auth = new_config.AuthPass
+    	reset = true
+	}
+
+    if old_config.MaxConn != new_config.MaxConn {
+    	new_max = new_config.MaxConn
+    	reset = true
+	}
+
+    if old_config.NormalConn != new_config.NormalConn {
+    	new_normal = new_config.NormalConn
+    	reset = true
+	}
+
+	if reset {
+		log.Info("%s will reset redis attr!" , _func_)
+		pconfig.RedisClient.Reset(new_addr , new_auth , new_max , new_normal)
+		return
+	}
+
+	log.Info("%s nothing to do" , _func_)
+}
+
+
 
 /*----------------static func--------------------*/
 func cb_init_global_uid(pcomm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {

@@ -170,6 +170,9 @@ func AfterReLoadConfig(pconfig *Config, old_config *FileConfig, new_config *File
 	var _func_ = "<AfterReLoadConfig>"
 	log := pconfig.Comm.Log
 
+	//redis
+	ResetRedis(pconfig , old_config , new_config)
+
 	log.Info("%s finish", _func_)
 	return
 }

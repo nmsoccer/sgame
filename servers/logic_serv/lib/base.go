@@ -3,6 +3,7 @@ package lib
 import (
 	"fmt"
 	"os"
+	llog "sgame/lib/log"
 	"sgame/servers/comm"
 	"time"
 )
@@ -15,6 +16,8 @@ type FileConfig struct {
 	SlaveDb       int      `json:"slave_db"`
 	LogFile       string   `json:"log_file"`
 	ManageAddr    []string `json:"manage_addr"`
+	NetLogAddr    []string `json:"net_log_addr"` //net log recver addr list
+	NetLogMethod  int      `json:"net_log_method"` //refer NETLOG_METHOD_XX
 	MaxOnline     int      `json:"max_online"`
 	ClientTimeout int      `json:"client_timeout"`
 	MonitorInv    int      `json:"monitor_inv"` //monitor interval seconds
@@ -33,6 +36,7 @@ type Config struct {
 	ReportCmdToken int64
 	ReportServ     *comm.ReportServ //report to manger
 	//local
+	NetLog   llog.NetLog
 	TableMap comm.TableMap
 	Users    *OnLineList
 }
@@ -81,6 +85,20 @@ func LocalSet(pconfig *Config) bool {
 	var _func_ = "<LocalSet>"
 	var log = pconfig.Comm.Log
 
+	//NetLog
+	var bad_addr []string
+	pconfig.NetLog , bad_addr = llog.OpenNetLog(pconfig.ProcId , pconfig.FileConfig.NetLogAddr , pconfig.FileConfig.NetLogMethod , llog.NETLOG_DEFAULT_DEGREE)
+	if pconfig.NetLog == nil {
+		log.Err("%s OpenNetLog:%v Failed!" , _func_ , pconfig.FileConfig.NetLogAddr)
+		return false
+	}
+	if len(bad_addr) > 0 {
+		log.Err("%s OpenNetLog:%v some addr fail! failed_addr:%v" , _func_ , pconfig.FileConfig.NetLogAddr , bad_addr)
+		return false
+	}
+	log.Info("%s OpenNetLog:%v Method:%d Degree:%d success!" , _func_ , pconfig.FileConfig.NetLogAddr , pconfig.FileConfig.NetLogMethod , llog.NETLOG_DEFAULT_DEGREE)
+
+
 	//users
 	pconfig.Users = new(OnLineList)
 	if pconfig.Users == nil {
@@ -125,6 +143,12 @@ func ServerExit(pconfig *Config) {
 	if pconfig.Comm.Proc != nil {
 		pconfig.Comm.Proc.Close()
 	}
+
+	//NetLog
+	if pconfig.NetLog != nil {
+		pconfig.NetLog.Close()
+	}
+
 
 	//close report_serv
 	if pconfig.ReportServ != nil {
