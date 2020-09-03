@@ -19,56 +19,67 @@ A Simple Game Framework  一个简单的游戏框架
 ### 安装
 #### 基础软件
 * **GO**  
-下载页面https://golang.google.cn/dl/ 或者 https://golang.org/dl/   
-这里下载并使用go 1.14版本，然后tar -C /usr/local -xzf go1.14.6.linux-amd64.tar.gz  修改本地.bashrc 
-export PATH=$PATH:/usr/local/go/bin export GOPATH=/home/nmsoccer/go 
+下载页面https://golang.google.cn/dl/ 或者 https://golang.org/dl/  这里下载并使用go 1.14版本，然后
+  * tar -C /usr/local -xzf go1.14.6.linux-amd64.tar.gz  
+  * 修改本地.bashrc export PATH=$PATH:/usr/local/go/bin export GOPATH=/home/nmsoccer/go 
 
 * **PROTOBUF**  
-下载页面https://github.com/protocolbuffers/protobuf/releases  
-这里选择下载protobuf-all-3.11.4.tar.gz.解压到本地后./configure --prefix=/usr/local/protobuf; make; make install  
-修改本地.bashrc export PATH=$PATH:/usr/local/protobuf/bin
+下载页面https://github.com/protocolbuffers/protobuf/releases  这里选择下载protobuf-all-3.11.4.tar.gz.
+  * 解压到本地后./configure --prefix=/usr/local/protobuf; make; make install  
+  * 修改本地.bashrc export PATH=$PATH:/usr/local/protobuf/bin
 
 * **REDIS**  
-下载页面https://redis.io/download  
-这里选择下载redis-5.0.8.tar.gz. 解压到本地后make 然后拷贝src/redis-cli src/redis-server src/redis.conf 到/usr/local/bin.
-然后修改/usr/local/bin/redis.conf新增密码requirepass cbuju 用作sgame使用redis的连接密码;修改port 6698作为监听端口 然后cd /usr/local/bin; ./redis-server ./redis.conf & 拉起即可  
+下载页面https://redis.io/download 这里选择下载redis-5.0.8.tar.gz. 
+  * 解压到本地后make 然后拷贝src/redis-cli src/redis-server src/redis.conf 到/usr/local/bin.
+  * 修改/usr/local/bin/redis.conf新增密码requirepass cbuju 用作sgame使用redis的连接密码 
+  * 修改port 6698作为监听端口 然后cd /usr/local/bin; ./redis-server ./redis.conf & 拉起即可  
 
 #### 必需库
 * **PROTOBUF-GO**  
 这里用手动安装来说明.
-  * 下载安装  
-  进入https://github.com/protocolbuffers/protobuf-go 下载protobuf-go-master.zip, 然后拷贝到GOPATH/src: mkdir -p $GOPATH/src/google.golang.org/; cp protobuf-go-master.zip $GOPATH/src/google.golang.org/; cd $GOPATH/src/google.golang.org/; 解压并改名解压后的目录为protobuf: unzip protobuf-go-master.zip; mv protobuf-go-master/ protobuf/
-  * 生成protoc-gen-go工具  
-  进入$GOPATH/src 然后go build google.golang.org/protobuf/cmd/protoc-gen-go/ 顺利的话会生成protoc-gen-go二进制文件 然后mv protoc-gen-go /usr/local/bin   
-  * 安装proto库  
-  进入$GOPATH/src 然后go install google.golang.org/protobuf/proto/ 安装协议解析库
-  * 完成   
-  进入任意目录执行protoc --go_out=. xxx.proto即可在本目录生成xxx.pb.go文件（这里使用proto3）
+  * 下载安装 进入https://github.com/protocolbuffers/protobuf-go 下载protobuf-go-master.zip 
+    * mkdir -p $GOPATH/src/google.golang.org/; cp protobuf-go-master.zip $GOPATH/src/google.golang.org/; 
+    * cd $GOPATH/src/google.golang.org/; 解压并改名解压后的目录为protobuf: unzip protobuf-go-master.zip; 
+    * mv protobuf-go-master/ protobuf/
+  * 生成protoc-gen-go工具 进入$GOPATH/src 
+    * go build google.golang.org/protobuf/cmd/protoc-gen-go/ 顺利的话会生成protoc-gen-go二进制文件   
+    * mv protoc-gen-go /usr/local/bin   
+  * 安装proto库 进入$GOPATH/src 
+    * go install google.golang.org/protobuf/proto/ 安装协议解析库
+  * 完成 进入任意目录执行protoc --go_out=. xxx.proto即可在本目录生成xxx.pb.go文件（这里使用proto3）
   
-  * 补充安装github.com/golang/protobuf/proto  
-  由于生成的xx.pb.go文件总会引用github.com/golang/protobuf/proto 库，所以我们一般还需要额外安装这个玩意儿. 进入https://github.com/golang/protobuf 页面，下载protobuf-master.zip到本地.
-  然后mkdir -p $GOPATH/src/github.com/golang/目录. cp protobuf-master.zip $GOPATH/src/github.com/golang/. 解压并重命名cd $GOPATH/src/github.com/golang/; unzip protobuf-master.zip; mv protobuf-master/ protobuf/; 安装 cd $GOPATH/src; go install github.com/golang/protobuf/proto
+  * 补充安装github.com/golang/protobuf/proto 由于生成的xx.pb.go文件总会引用github.com/golang/protobuf/proto 库，所以我们一般还需要额外安装这个玩意儿. 
+    * 进入https://github.com/golang/protobuf 页面，下载protobuf-master.zip到本地.
+    * mkdir -p $GOPATH/src/github.com/golang/目录. cp protobuf-master.zip $GOPATH/src/github.com/golang/. 
+    * 解压并重命名:cd $GOPATH/src/github.com/golang/; unzip protobuf-master.zip; mv protobuf-master/ protobuf/; 
+    * 安装 cd $GOPATH/src; go install github.com/golang/protobuf/proto
   
 * **REDIGO**    
 redigo是go封装访问redis的支持库，这里仍然以手动安装说明
   * 下载  
   进入https://github.com/gomodule/redigo 页面,下载redigo-master.zip到本地
   * 安装  
-  创建目录mkdir -p $GOPATH/src/github.com/gomodule; cp redigo-master.zip $GOPATH/src/github.com/gomodule; 解压并重命名: cd $GOPATH/src/github.com/gomodule; unzip redigo-master.zip; mv redigo-master redigo; 安装: cd $GOPATH/src; go install github.com/gomodule/redigo/redis  
+    * 创建目录mkdir -p $GOPATH/src/github.com/gomodule; cp redigo-master.zip $GOPATH/src/github.com/gomodule   
+    * 解压并重命名: cd $GOPATH/src/github.com/gomodule; unzip redigo-master.zip; mv redigo-master redigo  
+    * 安装: cd $GOPATH/src; go install github.com/gomodule/redigo/redis  
   
 * **SXX库**  
 sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安装为例  
   * slog  
-  一个简单的日志库.https://github.com/nmsoccer/slog. 下载slog-master.zip到本地，解压然后安装:cd slog-master; ./install.sh(需要root权限)
+  一个简单的日志库.https://github.com/nmsoccer/slog. 下载slog-master.zip到本地，
+    * 解压然后安装:cd slog-master; ./install.sh(需要root权限)
   * stlv
-  一个简单的STLV格式打包库. https://github.com/nmsoccer/stlv. 下载stlv-master.zip到本地,解压然后安装:cd stlv-master; ./install.sh(root权限)
+  一个简单的STLV格式打包库. https://github.com/nmsoccer/stlv. 下载stlv-master.zip到本地   
+    * 解压然后安装:cd stlv-master; ./install.sh(root权限)
   * proc_bridge
-  一个进程通信组件，sgame里集成了proc_bridge，这里需要安装支持库即可. https://github.com/nmsoccer/proc_bridge 下载proc_bridge-master.zip到本地，然后解压安装:cd proc_bridge-master/src/library; ./install_lib.sh(root权限)，安装完毕. 更加详细的各种配置请参考https://github.com/nmsoccer/proc_bridge/wiki
+  一个进程通信组件，sgame里集成了proc_bridge，这里需要安装支持库即可. https://github.com/nmsoccer/proc_bridge 下载proc_bridge-master.zip到本地  
+    * 解压安装:cd proc_bridge-master/src/library; ./install_lib.sh(root权限)，安装完毕. 更加详细的各种配置请参考https://github.com/nmsoccer/proc_bridge/wiki
   
 #### SGAME安装  
 这里仍然以手动安装为例
   * 下载安装    
-  进入 https://github.com/nmsoccer/sgame; 下载sgame-master.zip到本地; 部署cp sgame-master.zip $GOPATH/src/; cd $GOPATH/src; unzip sgame-master.zip; mv sgame-master sgame 完成
+  进入 https://github.com/nmsoccer/sgame; 下载sgame-master.zip到本地; 
+    * 部署cp sgame-master.zip $GOPATH/src/; cd $GOPATH/src; unzip sgame-master.zip; mv sgame-master sgame 完成  
   * 配置通信  
     * 进入 $GOPATH/src/sgame/proc_bridge. (这里的proc_bridge就是上面安装的proc_bridge组件，只是为了方便集成到这个项目里了).然后执行./init.sh初始化一些配置.
     * 进入sgame/目录。 修改bridge.cfg配置，因为我们是本机部署，所以这里修改BRIDGE_USER，BRIDGE_DIR这两个选项使得用户为本机有效用户即可.具体配置项请参考https://github.com/nmsoccer/proc_bridge/wiki/config-detail
