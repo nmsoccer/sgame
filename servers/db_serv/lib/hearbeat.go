@@ -46,7 +46,7 @@ func SendHeartBeatMsg(arg interface{}) {
 	proc := pconfig.Comm.Proc
 	//send msg
 	for _, target_id := range pconfig.FileConfig.TargetServs {
-		ret := proc.Send(target_id, buff, len(buff))
+		ret := proc.SendByLock(target_id, buff, len(buff)) //db_server should use lock by sending proc
 		if ret < 0 {
 			lp.Err("send msg to %d failed! err:%d", target_id, ret)
 		}
