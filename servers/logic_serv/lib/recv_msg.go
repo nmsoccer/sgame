@@ -69,8 +69,8 @@ func RecvMsg(pconfig *Config) int64 {
 			DirecToDb(pconfig , ss_msg.ProtoType , pmsg.sender , msg);
 		case ss.SS_PROTO_TYPE_REG_RSP:
 			DirecToConnect(pconfig , ss_msg.ProtoType , pmsg.sender , msg);
-		case ss.SS_PROTO_TYPE_TRANS_LOGIC_REQ:
-			RecvTransLogicReq(pconfig , ss_msg.GetTransLogicReq() , msg , pmsg.sender);
+		case ss.SS_PROTO_TYPE_USE_DISP_PROTO:
+			RecvDispMsg(pconfig , ss_msg.GetMsgDisp())
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}

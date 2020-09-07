@@ -1,0 +1,56 @@
+syntax="proto3";
+package ss;
+
+/*
+Target Server Type
+*/
+enum DISP_MSG_TARGET {
+  NON_SERVER = 0; //no target type specified
+  LOGIC_SERVER = 1;
+  CHAT_SERVER = 2;
+}
+
+/*
+Choose Target Server Method
+*/
+enum DISP_MSG_METHOD {
+  RAND = 0;  
+  HASH = 1;
+  SPEC = 2; //sepcify target
+}
+
+
+/*
+* Disp Proto <serv1 -- disp -- serv2>
+* Add Proto Should also modify servers/comm/disp.go:GenDispMsg and ExDispMsg functions
+*/
+enum DISP_PROTO_TYPE {
+  HELLO = 0;
+  KICK_DUPLICATE_USER = 1; //kick duplicate user on other line 
+}
+
+
+
+//DispMsg
+message MsgDisp {
+  DISP_PROTO_TYPE proto_type = 1;
+  DISP_MSG_TARGET target = 2;
+  DISP_MSG_METHOD method = 3;
+  int32 spec_server = 4; //only for METHOD_SPEC
+  int32 from_server = 5;
+  
+  oneof disp_body {
+    MsgDispHello hello = 20;
+    MsgDispKickDupUser kick_dup_user = 21;	
+  }  
+}
+
+
+/**********DISP SUB MSG*************/
+message MsgDispHello {
+  string content = 1;
+}
+
+message MsgDispKickDupUser {
+  int64 target_uid = 1; //target uid
+}

@@ -1,6 +1,7 @@
 syntax="proto3";
 package ss;
 
+import "disp.proto";
 import "user_info.proto";
 /*
 Server-Server Proto
@@ -17,9 +18,8 @@ enum SS_PROTO_TYPE {
   LOGOUT_REQ = 6;
   LOGOUT_RSP = 7;
   REG_REQ = 8;
-  REG_RSP = 9;
-  TRANS_LOGIC_REQ = 10; //logic --> disp --> logic2
-  TRANS_LOGIC_RSP = 11;
+  REG_RSP = 9;  
+  USE_DISP_PROTO = 10;  // serv <--> disp <--> serv
 }
 
 enum SS_COMMON_RESULT {
@@ -40,9 +40,8 @@ message SSMsg {
 	MsgLogoutReq logout_req = 26;
 	MsgLogoutRsp logout_rsp = 27;
 	MsgRegReq reg_req = 28;
-	MsgRegRsp reg_rsp = 29;
-	MsgTransLogicReq trans_logic_req = 30;
-	MsgTransLogicRsp trans_logic_rsp = 31;
+	MsgRegRsp reg_rsp = 29;	
+	MsgDisp  msg_disp = 30;
   }  
 }
 
@@ -134,25 +133,4 @@ message MsgRegRsp {
   string name=3;
 }
 
-//trans logic
-enum TRANS_LOGIC_CMD {
-  TRANS_CMD_NOTHING = 0;
-  TRANS_CMD_KICK_OLD_ONLINE = 1; //kick old online when new client login 
-}
-
-message MsgTransLogicReq {
-  TRANS_LOGIC_CMD cmd = 1;
-  int64 uid = 2;
-  int32 my_serv = 3;  
-  int32 target_serv = 20;
-}
-
-
-message MsgTransLogicRsp {
-  TRANS_LOGIC_CMD cmd = 1;
-  int64 uid = 2;
-  int32 my_serv = 3;
-  int32 target_serv = 20;
-  int64 int_value = 21;  
-}
 

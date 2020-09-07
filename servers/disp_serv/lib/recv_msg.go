@@ -56,13 +56,8 @@ func RecvMsg(pconfig *Config) int64 {
 		switch ss_msg.ProtoType {
 		case ss.SS_PROTO_TYPE_HEART_BEAT_REQ:
 			RecvHeartBeatReq(pconfig, ss_msg.GetHeartBeatReq(), pmsg.sender)
-		case ss.SS_PROTO_TYPE_TRANS_LOGIC_REQ:
-			ptrans_req := ss_msg.GetTransLogicReq()
-			if ptrans_req==nil {
-				log.Err("%s trans logic failed! req nil!" , _func_);
-				break;
-			}
-			SendToLogic(pconfig , int(ptrans_req.TargetServ) , msg)
+		case ss.SS_PROTO_TYPE_USE_DISP_PROTO:
+			RecvDispMsg(pconfig , ss_msg.GetMsgDisp() , pmsg.sender , msg)
 		default:
 			log.Err("%s fail! unknown proto type:%v", _func_, ss_msg.ProtoType)
 		}

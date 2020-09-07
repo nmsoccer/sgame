@@ -47,7 +47,8 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp, msg []byte) {
 	switch prsp.Result {
 	case ss.USER_LOGIN_RET_LOGIN_MULTI_ON: //kick other logic role firstly
 		log.Info("%s login at other logic:%d. will kick it first! uid:%d" , _func_ , prsp.OnlineLogic , prsp.Uid);
-        SendTransLogicKick(pconfig , prsp);
+        //SendTransLogicKick(pconfig , prsp);
+        SendDupUserKick(pconfig , prsp)
 
 
 	case ss.USER_LOGIN_RET_LOGIN_SUCCESS:
@@ -96,59 +97,58 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp, msg []byte) {
 	//log.Debug("%s send to connect success! user:%s", _func_, prsp.Name)
 }
 
-func SendTransLogicKick(pconfig *Config , prsp *ss.MsgLoginRsp) {
-    var _func_ = "<SendTransLogicKick>";
-    log := pconfig.Comm.Log;
+func SendDupUserKick(pconfig *Config, prsp *ss.MsgLoginRsp) {
+	var _func_ = "<SendDupUserKick>"
+	log := pconfig.Comm.Log
 
-    if prsp.Uid <= 0 {
-    	log.Err("%s failed! uid empty! name:%s" , _func_ , prsp.Name);
-    	return;
+	if prsp.Uid <= 0 {
+		log.Err("%s failed! uid empty! name:%s", _func_, prsp.Name)
+		return
 	}
 
-	//ss
-	var ss_msg ss.SSMsg;
-    ss_msg.ProtoType = ss.SS_PROTO_TYPE_TRANS_LOGIC_REQ
-    body := new(ss.SSMsg_TransLogicReq);
-    body.TransLogicReq = new(ss.MsgTransLogicReq);
-    preq := body.TransLogicReq;
-    preq.Cmd = ss.TRANS_LOGIC_CMD_TRANS_CMD_KICK_OLD_ONLINE
-    preq.Uid = prsp.Uid
-    preq.MyServ = int32(pconfig.ProcId)
-    preq.TargetServ = prsp.OnlineLogic;
-    ss_msg.MsgBody = body;
+	//gen disp msg
+	pkick := new(ss.MsgDispKickDupUser)
+	pkick.TargetUid = prsp.Uid
+	pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_NON_SERVER, ss.DISP_MSG_METHOD_SPEC, ss.DISP_PROTO_TYPE_KICK_DUPLICATE_USER, int(prsp.OnlineLogic),
+		pconfig.ProcId, pkick)
+	if err != nil {
+		log.Err("%s generate disp msg failed! uid:%d err:%v", _func_, err)
+		return
+	}
 
-
-    enc_data , err := ss.Pack(&ss_msg)
-    if err != nil {
-    	log.Err("%s enc failed! err:%v uid:%d" , _func_ , err , prsp.Uid);
-    	return;
+	//pack
+	enc_data, err := ss.Pack(pss_msg)
+	if err != nil {
+		log.Err("%s enc failed! err:%v uid:%d", _func_, err, prsp.Uid)
+		return
 	}
 
 	//send
-	if !SendToDispHash(pconfig , int(prsp.Uid) , enc_data) {
-		log.Err("%s send to disp failed! uid:%d" , _func_ , prsp.Uid);
+	if !SendToDispHash(pconfig, int(prsp.Uid), enc_data) {
+		log.Err("%s send to disp failed! uid:%d", _func_, prsp.Uid)
 	}
-	log.Debug("%s send to disp success! name:%s uid:%d", _func_, prsp.Name , prsp.Uid)
+	log.Debug("%s send to disp success! name:%s uid:%d", _func_, prsp.Name, prsp.Uid)
 }
 
 //recv kickout from other logic-serv
-func RecvTransLogicKick(pconfig *Config , preq *ss.MsgTransLogicReq) {
-    var _func_ = "<RecvTransLogicKick>"
-    log := pconfig.Comm.Log;
+func RecvDupUserKick(pconfig *Config, pmsg *ss.MsgDispKickDupUser, from int) {
+	var _func_ = "<RecvDupUserKick>"
+	log := pconfig.Comm.Log
 
-    //check arg
-    if preq == nil {
-    	log.Err("%s req nil!" , _func_);
-    	return;
+	//check arg
+	if pmsg == nil {
+		log.Err("%s req nil!", _func_)
+		return
 	}
 
-	log.Info("%s will kickout uid:%d from:%d" , _func_ , preq.Uid , preq.MyServ);
-    //logout
-    var logout ss.MsgLogoutReq;
-    logout.Uid = preq.Uid;
-    logout.Reason = ss.USER_LOGOUT_REASON_LOGOUT_SERVER_KICK_RECONN;
-    RecvLogoutReq(pconfig , &logout);
+	log.Info("%s will kickout uid:%d from:%d", _func_, pmsg.TargetUid, from)
+	//logout
+	var logout ss.MsgLogoutReq
+	logout.Uid = pmsg.TargetUid
+	logout.Reason = ss.USER_LOGOUT_REASON_LOGOUT_SERVER_KICK_RECONN
+	RecvLogoutReq(pconfig, &logout)
 }
+
 
 
 
