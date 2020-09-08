@@ -110,7 +110,7 @@ func SendDupUserKick(pconfig *Config, prsp *ss.MsgLoginRsp) {
 	pkick := new(ss.MsgDispKickDupUser)
 	pkick.TargetUid = prsp.Uid
 	pss_msg, err := comm.GenDispMsg(ss.DISP_MSG_TARGET_NON_SERVER, ss.DISP_MSG_METHOD_SPEC, ss.DISP_PROTO_TYPE_KICK_DUPLICATE_USER, int(prsp.OnlineLogic),
-		pconfig.ProcId, pkick)
+		pconfig.ProcId, 0 , pkick)
 	if err != nil {
 		log.Err("%s generate disp msg failed! uid:%d err:%v", _func_, err)
 		return
@@ -124,7 +124,7 @@ func SendDupUserKick(pconfig *Config, prsp *ss.MsgLoginRsp) {
 	}
 
 	//send
-	if !SendToDispHash(pconfig, int(prsp.Uid), enc_data) {
+	if !SendToDispHash(pconfig, prsp.Uid, enc_data) {
 		log.Err("%s send to disp failed! uid:%d", _func_, prsp.Uid)
 	}
 	log.Debug("%s send to disp success! name:%s uid:%d", _func_, prsp.Name, prsp.Uid)

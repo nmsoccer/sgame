@@ -7,7 +7,7 @@ Target Server Type
 enum DISP_MSG_TARGET {
   NON_SERVER = 0; //no target type specified
   LOGIC_SERVER = 1;
-  CHAT_SERVER = 2;
+  CHAT_SERVER = 2; //not use just demonize etc.
 }
 
 /*
@@ -38,6 +38,7 @@ message MsgDisp {
   DISP_MSG_METHOD method = 3;
   int32 spec_server = 4; //only for METHOD_SPEC
   int32 from_server = 5;
+  int64 hash_v = 6; //only for METHOD_HASH
   
   oneof disp_body {
     MsgDispHello hello = 20;

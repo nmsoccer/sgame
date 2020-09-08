@@ -26,6 +26,9 @@ const (
     INFO_RELOAD_CFG = 1 //1 server reload config #sig-usr1
     INFO_USR2 = 2 //2 sig-usr2 #sig-usr2
     INFO_PPROF= 3 //3 go pprof #sig-term
+
+	SELECT_METHOD_RAND = 1 //select id by rand
+	SELECT_METHOD_HASH = 2 //select by hash
 )
 
 
@@ -159,52 +162,89 @@ func GenerateLocalId(wid int16 , seq *uint16) int64 {
 	return id;
 }
 
+
 /*select a proper id
-* first select by hash key from candidate list
-* if stat is dead (last life >= heart) select a random
+* @method:refer SELECT_METHOD_XX
+* @hash_v:if method==SELECT_METHOD_HASH ,it sets hash value
+* @candidate:: candidate proc_id of servers
+* @stats: server heart stats
+* @life_time: valid life_time in stats
 * @result <=0 failed >0 success
-*/
-func SelectHashProperId(hash_v int , candidate []int , stats map[int] int64 , heart int) int{
+* PS:if candidate lens == 1 will only select one if in life_time
+ */
+func SelectProperServ(pconfig *CommConfig , method int , hash_v int64  , candidate []int , stats map[int]int64 , life_time int64) int {
+	var _func_ = "<SelectProperServ>"
+	var serv_id int
+	log := pconfig.Log
+	curr_ts := time.Now().Unix()
+
+	//empty
 	if len(candidate) <= 0 {
-		return -1;
+		log.Err("%s fail! candidate empty!" , _func_)
+		return -1
 	}
 
+
+	//only one member
 	if len(candidate) == 1 {
+		serv_id = candidate[0]
+		last_heart , ok := stats[serv_id]
+		if !ok {
+			log.Err("%s fail! no heart found of %d" , _func_ , serv_id)
+			return -1
+		}
+
+		if (life_time + last_heart) < curr_ts {
+			log.Err("%s fail! heart expired! last_heart:%d now:%d" , _func_ , last_heart , curr_ts)
+			return -1
+		}
+
 		return candidate[0]
 	}
 
-	//get pos by hash
-	curr_ts := time.Now().Unix();
-	pos := hash_v % len(candidate);
-	target := candidate[pos];
+	//more than one member
+	switch method {
+	case SELECT_METHOD_RAND:
+		//rand one
+		total := len(candidate)
+		i := rand.Intn(len(candidate));
+		count := 0
 
-	//alive
-	if stats[target] + int64(heart) >= curr_ts {
-		return target;
-	}
+		for {
+			if count >= total {
+				break;
+			}
 
-    //rand one
-    total := len(candidate)
-    i := rand.Intn(len(candidate));
-    count := 0
+			//search
+			serv_id = candidate[i]
+			if stats[serv_id] + life_time >= curr_ts {
+				return serv_id
+			}
 
-    for {
-        if count >= total {
-        	break;
+			//iter again
+			i++
+			i = i % total
+			count++
+		}
+		log.Err("%s [rand] no proper serv  found!" , _func_)
+	case SELECT_METHOD_HASH:
+		if hash_v <= 0 {
+			log.Err("%s [hash] hash_v:%d illegal!" , _func_ , hash_v)
+			break
 		}
 
-        //search
-        target = candidate[i]
-		if stats[target] + int64(heart) >= curr_ts {
-			return target;
+		pos := hash_v % int64(len(candidate));
+		serv_id = candidate[pos];
+		//alive
+		if stats[serv_id] + life_time >= curr_ts {
+			return serv_id;
 		}
+		log.Err("%s [hash] no proper serv  found!" , _func_)
+	default:
+		log.Err("%s fail! illegal method:%d" , _func_ , method)
 
-		//iter again
-		i++
-        i = i % total
-        count++
 	}
 
-    return -1;
+	return -1
 }
 

@@ -52,9 +52,9 @@ func SendHeartBeatMsg(arg interface{}) {
 	    lp.Err("send msg to %d failed! err:%d" , pconfig.FileConfig.ConnServ , ret);
     }
       //to db
-    ret = proc.Send(pconfig.FileConfig.MasterDb , buff , len(buff));
+    ret = proc.Send(pconfig.FileConfig.DbServ , buff , len(buff));
     if ret < 0 {
-	    lp.Err("send msg to %d failed! err:%d" , pconfig.FileConfig.MasterDb , ret);
+	    lp.Err("send msg to %d failed! err:%d" , pconfig.FileConfig.DbServ , ret);
     }
       //to disp
     for _ , disp_serv := range pconfig.FileConfig.DispServList {

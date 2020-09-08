@@ -20,10 +20,10 @@
   "proc_cfgs":[
     {"name":"conn_serv-1" ,  "cfg_name":"conf/conn_serv.json" , "cfg_tmpl":"./tmpl/conn_serv.tmpl" , "tmpl_param":"logic_serv=20001,listen_addr=:18909,m_addr=:7000"}, 
     {"name":"conn_serv-2" ,  "cfg_name":"conf/conn_serv.json" , "cfg_tmpl":"./tmpl/conn_serv.tmpl" , "tmpl_param":"logic_serv=20002,listen_addr=:18910,m_addr=:7000"}, 	
-    {"name":"logic_serv-1" , "cfg_name":"conf/logic_serv.json" , "cfg_tmpl":"./tmpl/logic_serv.tmpl" , "tmpl_param":"conn_serv=10001,master_db=30001,slave_db=0,m_addr=127.0.0.1:7000"},
-    {"name":"logic_serv-2" , "cfg_name":"conf/logic_serv.json" , "cfg_tmpl":"./tmpl/logic_serv.tmpl" , "tmpl_param":"conn_serv=10002,master_db=30002,slave_db=0,m_addr=127.0.0.1:7000"},	
-	{"name":"db_logic_serv-1" ,    "cfg_name":"conf/db_serv.json" ,    "cfg_tmpl":"./tmpl/db_serv.tmpl" , "tmpl_param":"ts1=20001,redis_addr=127.0.0.1:6698,m_addr=:7000"},
-    {"name":"db_logic_serv-2" ,    "cfg_name":"conf/db_serv.json" ,    "cfg_tmpl":"./tmpl/db_serv.tmpl" , "tmpl_param":"ts1=20002,redis_addr=127.0.0.1:6698,m_addr=:7000"},
+    {"name":"logic_serv-1" , "cfg_name":"conf/logic_serv.json" , "cfg_tmpl":"./tmpl/logic_serv.tmpl" , "tmpl_param":"conn_serv=10001,db_serv=30001,m_addr=127.0.0.1:7000"},
+    {"name":"logic_serv-2" , "cfg_name":"conf/logic_serv.json" , "cfg_tmpl":"./tmpl/logic_serv.tmpl" , "tmpl_param":"conn_serv=10002,db_serv=30002,m_addr=127.0.0.1:7000"},	
+	{"name":"db_logic_serv-1" ,    "cfg_name":"conf/db_serv.json" ,    "cfg_tmpl":"./tmpl/db_serv.tmpl" , "tmpl_param":"target=20001,redis_addr=127.0.0.1:6698,m_addr=:7000"},
+    {"name":"db_logic_serv-2" ,    "cfg_name":"conf/db_serv.json" ,    "cfg_tmpl":"./tmpl/db_serv.tmpl" , "tmpl_param":"target=20002,redis_addr=127.0.0.1:6698,m_addr=:7000"},
     {"name":"disp_serv-1" ,    "cfg_name":"conf/disp_serv.json" ,    "cfg_tmpl":"./tmpl/disp_serv.tmpl" , "tmpl_param":"m_addr=:7000"},
     {"name":"disp_serv-2" ,    "cfg_name":"conf/disp_serv.json" ,    "cfg_tmpl":"./tmpl/disp_serv.tmpl" , "tmpl_param":"m_addr=:7000"},	
     {"name":"manage_serv-1" ,  "cfg_name":"conf/manage_serv.json" , "cfg_tmpl":"./tmpl/manage_serv.tmpl" , "tmpl_param":"listen_addr=:7000,http_addr=:8080"}

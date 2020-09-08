@@ -12,8 +12,7 @@ type FileConfig struct {
 	//	ProcName string `json:"proc_name"`
 	ConnServ      int      `json:"conn_serv"`
 	DispServList  []int    `json:"disp_serv_list"`
-	MasterDb      int      `json:"master_db"`
-	SlaveDb       int      `json:"slave_db"`
+	DbServ        int      `json:"db_serv"`
 	LogFile       string   `json:"log_file"`
 	ManageAddr    []string `json:"manage_addr"`
 	NetLogAddr    []string `json:"net_log_addr"` //net log recver addr list

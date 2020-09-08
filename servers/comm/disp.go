@@ -13,9 +13,11 @@ Generate Disp Msg by arg. this function should be modified when new ss.DISP_PROT
 @target:target server type
 @method:choose spec target server method
 @spec:spec target server will ignore @target and @method
+@hash_v: if method is hash , this specify hash_value
 @return:ss_msg , error
  */
-func GenDispMsg(target ss.DISP_MSG_TARGET, method ss.DISP_MSG_METHOD, proto ss.DISP_PROTO_TYPE, spec int , sender int , disp_msg interface{}) (*ss.SSMsg , error) {
+func GenDispMsg(target ss.DISP_MSG_TARGET, method ss.DISP_MSG_METHOD, proto ss.DISP_PROTO_TYPE, spec int , sender int , hash_v int64 ,
+	disp_msg interface{}) (*ss.SSMsg , error) {
 	var ss_msg = new(ss.SSMsg)
 	ss_msg.ProtoType = ss.SS_PROTO_TYPE_USE_DISP_PROTO
 	body := new(ss.SSMsg_MsgDisp)
@@ -23,6 +25,7 @@ func GenDispMsg(target ss.DISP_MSG_TARGET, method ss.DISP_MSG_METHOD, proto ss.D
 	body.MsgDisp.ProtoType = proto
 	body.MsgDisp.Method = method
 	body.MsgDisp.Target = target
+	body.MsgDisp.HashV = hash_v
 	body.MsgDisp.SpecServer = int32(spec)
 	body.MsgDisp.FromServer = int32(sender)
 	ss_msg.MsgBody = body
