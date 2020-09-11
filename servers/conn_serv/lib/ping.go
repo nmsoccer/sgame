@@ -3,39 +3,31 @@ package lib
 import (
 	"sgame/proto/cs"
 	"sgame/proto/ss"
+	"sgame/servers/comm"
 )
 
 func SendPingReq(pconfig *Config, client_key int64, pmsg *cs.CSPingReq) {
 	var _func_ = "<SendPingReq>"
 	log := pconfig.Comm.Log
 
-	//init pkg
-	var ss_req ss.SSMsg
-	//proto
-	ss_req.ProtoType = ss.SS_PROTO_TYPE_PING_REQ
-	//body
-	sp := new(ss.SSMsg_PingReq)
-	sp.PingReq = new(ss.MsgPingReq)
-	sp.PingReq.ClientKey = client_key
-	sp.PingReq.Ts = pmsg.TimeStamp
-	//finish
-	ss_req.MsgBody = sp
+	//create pkg
+	var ss_msg ss.SSMsg
+	pPingReq := new(ss.MsgPingReq)
+	pPingReq.ClientKey = client_key
+	pPingReq.Ts = pmsg.TimeStamp
 
-	//pack
-	buff, err := ss.Pack(&ss_req)
+	//FILL
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_PING_REQ , pPingReq)
 	if err != nil {
-		log.Err("%s pack failed! client:%v err:%v", _func_, client_key, err)
+		log.Err("%s fill ss failed! client:%v err:%v", _func_, client_key, err)
 		return
 	}
 
 	//send msg
-	//ret := pconfig.Comm.Proc.Send(pconfig.FileConfig.LogicServ, buff , len(buff));
-	ok := SendToLogic(pconfig, buff)
+	ok := SendToLogic(pconfig, &ss_msg)
 	if !ok {
 		log.Err("%s send msg  failed!", _func_)
 	}
-	log.Debug("%s send success! client_key:%v ts:%v", _func_, client_key, pmsg.TimeStamp)
-	return
 }
 
 func RecvPingRsp(pconfig *Config, prsp *ss.MsgPingRsp) {

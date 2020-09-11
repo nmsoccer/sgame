@@ -26,23 +26,20 @@ func SendRegRsp(pconfig *Config, preq *ss.MsgRegReq, target_serv int, result ss.
 	log.Info("%s name:%s target:%d result:%v", _func_, preq.Name, target_serv, result)
 	//msg
 	var ss_msg ss.SSMsg
-	ss_msg.ProtoType = ss.SS_PROTO_TYPE_REG_RSP
-	body := new(ss.SSMsg_RegRsp)
-	body.RegRsp = new(ss.MsgRegRsp)
-	body.RegRsp.Name = preq.Name
-	body.RegRsp.CKey = preq.CKey
-	body.RegRsp.Result = result
-	ss_msg.MsgBody = body
+	pRegRsp := new(ss.MsgRegRsp)
+	pRegRsp.Name = preq.Name
+	pRegRsp.CKey = preq.CKey
+	pRegRsp.Result = result
 
-	//pack
-	coded, err := ss.Pack(&ss_msg)
+	//fill
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_REG_RSP , pRegRsp)
 	if err != nil {
 		log.Err("%s pack failed! err:%v", _func_, err)
 		return
 	}
 
 	//sendback
-	if ok := SendToServer(pconfig, coded, target_serv); !ok {
+	if ok := SendToServ(pconfig, target_serv , &ss_msg); !ok {
 		log.Err("%s send to logic:%d failed!", _func_, target_serv)
 	}
 }
@@ -53,6 +50,7 @@ func cb_set_global_name(comm_config *comm.CommConfig, result interface{}, cb_arg
 	var _func_ = "<cb_set_global_name>"
 	log := comm_config.Log
 
+	/*---------mostly common logic--------------*/
 	//get config
 	pconfig, ok := comm_config.ServerCfg.(*Config)
 	if !ok {
@@ -73,6 +71,7 @@ func cb_set_global_name(comm_config *comm.CommConfig, result interface{}, cb_arg
 		return
 	}
 
+	/*---------result handle--------------*/
 	//check result
 	err, ok := result.(error)
 	if ok {
@@ -105,6 +104,7 @@ func cb_alloc_uid(comm_config *comm.CommConfig, result interface{}, cb_arg []int
 	var _func_ = "<cb_alloc_uid>"
 	log := comm_config.Log
 
+	/*---------mostly common logic--------------*/
 	//get config
 	pconfig, ok := comm_config.ServerCfg.(*Config)
 	if !ok {
@@ -125,6 +125,7 @@ func cb_alloc_uid(comm_config *comm.CommConfig, result interface{}, cb_arg []int
 		return
 	}
 
+	/*---------result handle--------------*/
 	//check result
 	err, ok := result.(error)
 	if ok {
@@ -152,7 +153,7 @@ func cb_alloc_uid(comm_config *comm.CommConfig, result interface{}, cb_arg []int
 	log.Info("%s uid:%d try to set user global. name:%s", _func_, uid, preq.Name)
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GLOBAL, preq.Name)
 	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_set_global_info, append(cb_arg, uid), "HMSET", tab_name, "uid", uid,
-		"pass", preq.Pass, "online_logic", -1)
+		"pass", preq.Pass)
 }
 
 //set global
@@ -161,6 +162,7 @@ func cb_set_global_info(comm_config *comm.CommConfig, result interface{}, cb_arg
 	var _func_ = "<cb_set_global_info>"
 	log := comm_config.Log
 
+	/*---------mostly common logic--------------*/
 	//get config
 	pconfig, ok := comm_config.ServerCfg.(*Config)
 	if !ok {
@@ -187,6 +189,7 @@ func cb_set_global_info(comm_config *comm.CommConfig, result interface{}, cb_arg
 		return
 	}
 
+	/*---------result handle--------------*/
 	//check result
 	err, ok := result.(error)
 	if ok {
@@ -210,13 +213,14 @@ func cb_set_global_info(comm_config *comm.CommConfig, result interface{}, cb_arg
 		sex_v = 2
 	}
 	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_reg_set_user_info, cb_arg, "HMSET", tab_name, "uid", uid,
-		"name", preq.Name, "addr", preq.Addr, "sex", sex_v)
+		"name", "xxooxx", "addr", preq.Addr, "sex", sex_v , "online_logic", -1)
 }
 
 func cb_reg_set_user_info(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
 	var _func_ = "<cb_reg_set_user_info>"
 	log := comm_config.Log
 
+	/*---------mostly common logic--------------*/
 	//get config
 	pconfig, ok := comm_config.ServerCfg.(*Config)
 	if !ok {
@@ -243,6 +247,7 @@ func cb_reg_set_user_info(comm_config *comm.CommConfig, result interface{}, cb_a
 		return
 	}
 
+	/*---------result handle--------------*/
 	//check result
 	err, ok := result.(error)
 	if ok {

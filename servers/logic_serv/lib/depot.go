@@ -20,7 +20,7 @@ func InitUserDepot(pconfig *Config , pdepot *ss.UserDepot , uid int64) {
 
     var instid int64 = 0;
     //put 10 items
-    for i:=0; i<100; i++ {
+    for i:=0; i<10; i++ {
         instid = comm.GenerateLocalId(int16(pconfig.ProcId & 0xFFFF) , &generate_item_seq);
         pdepot.Items[instid] = new(ss.Item);
         pdepot.Items[instid].Resid = int32(i+1001);

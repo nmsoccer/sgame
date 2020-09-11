@@ -6,15 +6,15 @@ import (
 
 /*
 * ##tables desc##
-* #users:global:[name]  <hash> name | pass | uid | online_logic
-* #user:[uid] <hash>  uid | name | age | sex  | addr | level | blob_info
+* #users:global:[name]  <hash> name | pass | uid
+* #user:[uid] <hash>  uid | name | age | sex  | addr | level | online_logic | blob_info
 * #global:uid <string>
  */
 
 
 const (
-	FORMAT_TAB_USER_GLOBAL="users:global:%s" //users:global:[name]  ++ hash ++ name | pass | uid | online_logic
-	FORMAT_TAB_USER_INFO_REFIX="user:" // user:[uid] ++ hash ++ uid | name | age | sex  | addr | level | blob_info
+	FORMAT_TAB_USER_GLOBAL="users:global:%s" //users:global:[name]  ++ hash ++ name | pass | uid
+	FORMAT_TAB_USER_INFO_REFIX="user:" // user:[uid] ++ hash ++ uid | name | age | sex  | addr | level | online_logic | blob_info
 	FORMAT_TAB_GLOBAL_UID="global:uid" // ++ string
 )
 

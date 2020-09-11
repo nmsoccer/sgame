@@ -7,7 +7,6 @@ import (
 	"strconv"
 )
 
-
 //user login
 func RecvUserLoginReq(pconfig *Config, preq *ss.MsgLoginReq, from int) {
 	var _func_ = "<RecvUserLoginReq>"
@@ -15,47 +14,42 @@ func RecvUserLoginReq(pconfig *Config, preq *ss.MsgLoginReq, from int) {
 
 	log.Debug("%s user:%s pass:%s c_key:%d", _func_, preq.GetName(), preq.GetPass(), preq.GetCKey())
 	//query pass
-	cmd_arg := fmt.Sprintf(FORMAT_TAB_USER_GLOBAL , preq.Name);
+	cmd_arg := fmt.Sprintf(FORMAT_TAB_USER_GLOBAL, preq.Name)
 	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_user_login_check_pass, []interface{}{preq, from},
 		"HGETALL", cmd_arg)
 }
 
 //user logout
-func RecvUserLogoutReq(pconfig *Config , preq *ss.MsgLogoutReq , from int) {
-	var _func_ = "<RecvUserLogoutReq>";
-	log := pconfig.Comm.Log;
+func RecvUserLogoutReq(pconfig *Config, preq *ss.MsgLogoutReq, from int) {
+	var _func_ = "<RecvUserLogoutReq>"
+	log := pconfig.Comm.Log
 
-    //check info
-    if preq.UserInfo == nil || preq.UserInfo.BasicInfo.Uid != preq.Uid {
-    	log.Err("%s fail! user_info not illegal! uid:%d reason:%d" , _func_ , preq.Uid , preq.Reason);
-    	return;
+	//check info
+	if preq.UserInfo == nil || preq.UserInfo.BasicInfo.Uid != preq.Uid {
+		log.Err("%s fail! user_info not illegal! uid:%d reason:%d", _func_, preq.Uid, preq.Reason)
+		return
 	}
-	log.Debug("%s user:%s uid:%d reason:%d" , _func_ , preq.UserInfo.BasicInfo.Name , preq.Uid , preq.Reason);
+	log.Debug("%s user:%s uid:%d reason:%d", _func_, preq.UserInfo.BasicInfo.Name, preq.Uid, preq.Reason)
 
-	cb_arg := []interface{}{from , preq.Uid , preq.Reason};
-	//update online
-	global_tab := fmt.Sprintf(FORMAT_TAB_USER_GLOBAL , preq.UserInfo.BasicInfo.Name);
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm , cb_update_online_logout , cb_arg , "HSET" , global_tab , "online_logic" , -1);
-
+	cb_arg := []interface{}{from, preq.Uid, preq.Reason}
 
 	//save user info
-	user_tab := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d" , preq.Uid);
-	puser_info := preq.UserInfo;
-	user_blob  , err := ss.Pack(preq.UserInfo.BlobInfo);
+	user_tab := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d", preq.Uid)
+	puser_info := preq.UserInfo
+	user_blob, err := ss.Pack(preq.UserInfo.BlobInfo)
 	if err != nil {
-		log.Err("%s save user_info failed! pack blob info fail! err:%v uid:%d" , _func_ , err , preq.Uid);
-		return;
+		log.Err("%s save user_info failed! pack blob info fail! err:%v uid:%d", _func_, err, preq.Uid)
+		return
 	}
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm , cb_save_user_logout , cb_arg , "HMSET" , user_tab , "addr" ,
-		puser_info.BasicInfo.Addr , "level" , puser_info.BasicInfo.Level , "blob_info" , string(user_blob));
-    return;
+	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_save_user_logout, cb_arg, "HMSET", user_tab, "addr",
+		puser_info.BasicInfo.Addr, "level", puser_info.BasicInfo.Level, "online_logic", -1 , "blob_info", string(user_blob))
+	return
 }
 
 /*---------------------------------STATIC FUNC-----------------------------*/
 //cb_arg={0:preq 1:from_server}
 func cb_user_login_check_pass(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
 	var _func_ = "<cb_user_login_check_pass>"
-	var ss_msg ss.SSMsg
 	log := comm_config.Log
 	pconfig, ok := comm_config.ServerCfg.(*Config)
 	if !ok {
@@ -78,22 +72,20 @@ func cb_user_login_check_pass(comm_config *comm.CommConfig, result interface{}, 
 
 	//log.Debug("%s user:%s pass:%s c_key:%v", _func_, preq.GetName(), preq.GetPass(), preq.GetCKey())
 	//check error
-	if err , ok := result.(error); ok {
-        log.Err("%s reply error! name:%s err:%v" , _func_ , preq.Name , err);
-        return;
+	if err, ok := result.(error); ok {
+		log.Err("%s reply error! name:%s err:%v", _func_, preq.Name, err)
+		return
 	}
 
 	//rsp
-	ss_msg.ProtoType = ss.SS_PROTO_TYPE_LOGIN_RSP
-	body := new(ss.SSMsg_LoginRsp)
-	body.LoginRsp = new(ss.MsgLoginRsp)
-	prsp := body.LoginRsp
+	var ss_msg ss.SSMsg
+	prsp := new(ss.MsgLoginRsp)
 	prsp.CKey = preq.CKey
 	prsp.Name = preq.Name
-	ss_msg.MsgBody = body
+
 
 	//do while 0
-	for  {
+	for {
 		//check result may need reg
 		if result == nil {
 			log.Info("%s no user:%s exist!", _func_, preq.Name)
@@ -110,15 +102,7 @@ func cb_user_login_check_pass(comm_config *comm.CommConfig, result interface{}, 
 
 		pass := sm["pass"]
 		uid := sm["uid"]
-		online_logic := -1; //not online
-		if sm["online_logic"] != "" {
-			online_logic , err = strconv.Atoi(sm["online_logic"]);
-			if err != nil {
-				log.Err("%s conv online-logic failed! err:%v" , _func_ , err);
-				online_logic = 0;
-			}
-		}
-		log.Debug("%s get pass:%s uid:%s online:%d", _func_, pass, uid , online_logic);
+		log.Debug("%s get pass:%s uid:%s", _func_, pass, uid)
 		//check pass
 		if preq.GetPass() != pass {
 			log.Info("%s pass not matched! user:%s c_key:%v ", _func_, preq.Name, preq.CKey)
@@ -126,46 +110,24 @@ func cb_user_login_check_pass(comm_config *comm.CommConfig, result interface{}, 
 			break
 		}
 
-		//get uid
-		user_uid , err := strconv.ParseInt(uid , 10 , 64);
-		if err != nil {
-			log.Err("%s parse uid failed! uid:%s err:%v user:%s" , _func_ , uid , err , preq.Name);
-			prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR
-			break;
+		//sucess. get user info
+		if preq.Uid == 0 { //default role
+			tab_name := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%s", uid)
+			pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_user_login_get_info, cb_arg, "HGETALL", tab_name)
 		}
-
-
-		//check online
-		//already login at other logic should kick first
-		if online_logic >= 0 && online_logic != from_serv {
-			log.Info("%s user:%s login at other logic server %d now logic:%d kick first!" , _func_ , preq.Name , online_logic ,
-				from_serv);
-			prsp.Result = ss.USER_LOGIN_RET_LOGIN_MULTI_ON;
-			prsp.OnlineLogic = int32(online_logic);
-			prsp.Uid = user_uid;
-			break;
-		}
-
-
-
-		//sucess. update online info
-		log.Debug("%s pass matched! update online info!", _func_)
-		tab_arg := fmt.Sprintf(FORMAT_TAB_USER_GLOBAL , preq.Name);
-		pconfig.RedisClient.RedisExeCmd(pconfig.Comm , cb_update_online , append(cb_arg, uid) ,
-			"HSET" , tab_arg , "online_logic" , from_serv);
 		return
 	}
 
 	/*Back to Client*/
-	//pack
-	buff, err := ss.Pack(&ss_msg)
+	//fill
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOGIN_RSP , prsp)
 	if err != nil {
-		log.Err("%s pack failed! err:%v", _func_, err)
+		log.Err("%s gen ss failed! err:%v", _func_, err)
 		return
 	}
 
 	//send
-	ok = SendToServer(pconfig, buff, from_serv)
+	ok = SendToServ(pconfig, from_serv , &ss_msg)
 	if !ok {
 		log.Err("%s send back to %d failed!", _func_, from_serv)
 		return
@@ -174,55 +136,13 @@ func cb_user_login_check_pass(comm_config *comm.CommConfig, result interface{}, 
 	return
 }
 
-//cb_arg={0:preq 1:from_server 2:uid}
-func cb_update_online(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
-	var _func_ = "<cb_update_online>";
-	log := comm_config.Log;
-	pconfig, ok := comm_config.ServerCfg.(*Config)
-	if !ok {
-		log.Err("%s get config failed! cb:%v", _func_, cb_arg)
-		return
-	}
 
-	/*convert callback arg*/
-	preq, ok := cb_arg[0].(*ss.MsgLoginReq)
-	if !ok {
-		log.Err("%s conv req failed! cb:%v", _func_, cb_arg)
-		return
-	}
-
-	uid, ok := cb_arg[2].(string)
-	if !ok {
-		log.Err("%s conv uid failed! cb:%v", _func_, cb_arg)
-		return
-	}
-
-	//check error
-	if err , ok := result.(error); ok {
-		log.Err("%s reply error! name:%s err:%v" , _func_ , preq.Name , err);
-		return;
-	}
-
-    /*Get Result*/
-    ret_code , err := comm.Conv2Int(result);
-    if err != nil {
-    	log.Err("%s conv result failed! name:%s err:%v" , _func_ , preq.Name , err);
-    	return;
-	}
-    log.Debug("%s ret_code:%d name:%s" , _func_ , ret_code , preq.Name);
-
-    /*Get UserDetail*/
-    cmd_arg := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%s" , uid);
-    pconfig.RedisClient.RedisExeCmd(pconfig.Comm , cb_user_login_get_info , cb_arg , "HGETALL" , cmd_arg);
-    return;
-}
-
-
-//cb_arg={0:preq 1:from_server 2:uid}
+//cb_arg={0:preq 1:from_server}
 func cb_user_login_get_info(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
 	var _func_ = "<cb_user_login_get_info>"
-	var ss_msg ss.SSMsg
 	log := comm_config.Log
+
+	/*---------mostly common logic--------------*/
 	pconfig, ok := comm_config.ServerCfg.(*Config)
 	if !ok {
 		log.Err("%s get config failed! cb:%v", _func_, cb_arg)
@@ -242,21 +162,19 @@ func cb_user_login_get_info(comm_config *comm.CommConfig, result interface{}, cb
 		return
 	}
 
-	log.Debug("%s user:%s pass:%s c_key:%v", _func_, preq.GetName(), preq.GetPass(), preq.GetCKey())
+	log.Debug("%s user:%s c_key:%v", _func_, preq.GetName(), preq.GetCKey())
+	/*---------result handle--------------*/
 	//check error
-	if err , ok := result.(error); ok {
-		log.Err("%s reply error! name:%s err:%v" , _func_ , preq.Name , err);
-		return;
+	if err, ok := result.(error); ok {
+		log.Err("%s reply error! name:%s err:%v", _func_, preq.Name, err)
+		return
 	}
 
 	/*create rsp */
-	ss_msg.ProtoType = ss.SS_PROTO_TYPE_LOGIN_RSP
-	body := new(ss.SSMsg_LoginRsp)
-	body.LoginRsp = new(ss.MsgLoginRsp)
-	prsp := body.LoginRsp
+	pss_msg := new(ss.SSMsg)
+	prsp := new(ss.MsgLoginRsp)
 	prsp.CKey = preq.CKey
 	prsp.Name = preq.Name
-	ss_msg.MsgBody = body
 
 	//do while 0
 	for {
@@ -271,23 +189,20 @@ func cb_user_login_get_info(comm_config *comm.CommConfig, result interface{}, cb
 		sm, err := comm.Conv2StringMap(result)
 		if err != nil {
 			log.Err("%s conv result failed! err:%v", _func_, err)
-			return
+			prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR
+			break
 		}
 
-		//log.Debug("%s get user_Info success! user:%s detail:%v", _func_, preq.Name, sm)
 		//Get User Info
 		prsp.UserInfo = new(ss.UserInfo)
 		prsp.UserInfo.BasicInfo = new(ss.UserBasic)
 		pbasic := prsp.UserInfo.BasicInfo
-		pbasic.Name = preq.Name
+		puser_blob := new(ss.UserBlob)
 
-		//basic info(and default)
 		var uid int64
-		var age int
-		var sex int = 1; //1:male 2:female
-		var addr string = "moon";
-		var level int = 1;
-		var puser_blob = new(ss.UserBlob);
+        var online_logic  = -1
+
+		//uid
 		if v, ok := sm["uid"]; ok {
 			uid, err = strconv.ParseInt(v, 10, 64)
 			if err != nil {
@@ -300,114 +215,212 @@ func cb_user_login_get_info(comm_config *comm.CommConfig, result interface{}, cb
 			prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR
 			break
 		}
+		prsp.Uid = uid
+		pbasic.Uid = uid
+
+
+		//online_logic
+		if v , ok := sm["online_logic"]; ok {
+			online_logic , err = strconv.Atoi(v);
+			if err != nil {
+				log.Err("%s conv online-logic failed! err:%v" , _func_ , err);
+				prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR
+			}
+		} else {
+			log.Err("%s conv online-logic not exist! uid:%d" , _func_ , uid);
+			prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR
+		}
+		//check online
+		//already login at other logic should kick first
+		if online_logic >= 0 && online_logic != from_serv {
+			log.Info("%s user:%s login at other logic server %d now logic:%d kick first!" , _func_ , preq.Name , online_logic ,
+				from_serv);
+			prsp.Result = ss.USER_LOGIN_RET_LOGIN_MULTI_ON;
+			prsp.OnlineLogic = int32(online_logic);
+			break;
+		}
+
+
+		//role_name
+		if v, ok := sm["name"]; ok {
+			pbasic.Name = v
+		} else {
+			log.Err("%s no role_name found of uid:%d", _func_, uid)
+			prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR
+			break
+		}
 
 		//age
 		if v, ok := sm["age"]; ok {
-			age, err = strconv.Atoi(v)
+			age, err := strconv.Atoi(v)
 			if err != nil {
 				log.Err("%s conv age failed! err:%v age:%s", _func_, err, v)
+				prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR
+				break
 			}
+			pbasic.Age = int32(age)
 		}
 
 		//sex
 		if v, ok := sm["sex"]; ok {
-			sex, err = strconv.Atoi(v)
+			sex, err := strconv.Atoi(v)
 			if err != nil {
 				log.Err("%s conv sex failed! err:%v sex:%s", _func_, err, v)
+				prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR
+				break
+			}
+			if sex == 1 {
+				pbasic.Sex = true //male; false:female
+			} else {
+				pbasic.Sex = false
 			}
 		}
 
 		//addr
 		if v, ok := sm["addr"]; ok {
-			addr = v
+			pbasic.Addr = v
 		}
 
 		//level
-		if v , ok := sm["level"]; ok {
-			level , err = strconv.Atoi(v);
+		if v, ok := sm["level"]; ok {
+			level, err := strconv.Atoi(v)
 			if err != nil {
-				log.Err("%s conv level failed! err:%v level:%s" , _func_ , err , v);
-				prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR;
-				break;
+				log.Err("%s conv level failed! err:%v level:%s", _func_, err, v)
+				prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR
+				break
 			}
+			pbasic.Level = int32(level)
 		}
 
 		//blob info
-        if v , ok := sm["blob_info"]; ok {
-            err = ss.UnPack([]byte(v) , puser_blob);
-            if err != nil {
-            	log.Err("%s unpack user_blob failed! err:%v uid:%d" , _func_ , err , uid);
-            	prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR;
-            	break;
+		if v, ok := sm["blob_info"]; ok {
+			err = ss.UnPack([]byte(v), puser_blob)
+			if err != nil {
+				log.Err("%s unpack user_blob failed! err:%v uid:%d", _func_, err, uid)
+				prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR
+				break
 			}
 		} else { //set blob_info default value
-			puser_blob.Exp = 100;
+			puser_blob.Exp = 100
 		}
-
-
+		prsp.UserInfo.BlobInfo = puser_blob
 
 		//Fullfill
 		prsp.Result = ss.USER_LOGIN_RET_LOGIN_SUCCESS
-		prsp.Uid = uid;
-		pbasic.Addr = addr
-		pbasic.Uid = uid
-		pbasic.Age = int32(age)
-		pbasic.Level = int32(level);
-		prsp.UserInfo.BlobInfo = puser_blob;
-		if sex == 1 {
-			pbasic.Sex = true //male; false:female
-		}
 		log.Debug("%s success! user:%s uid:%v", _func_, pbasic.Name, pbasic.Uid)
-		break
+
+		//msg
+		err = comm.FillSSPkg(pss_msg , ss.SS_PROTO_TYPE_LOGIN_RSP , prsp)
+		if err != nil {
+			log.Err("%s gen ss failed! err:%v" , _func_ , err)
+			return
+		}
+
+		//update online_logic
+		log.Debug("%s update online logic!", _func_)
+		tab_name := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d", uid)
+		pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_update_online, append(cb_arg, pss_msg), "HSET", tab_name, "online_logic", from_serv)
+		return
 	}
 
-	/*Back to Client*/
-	//pack
-	buff, err := ss.Pack(&ss_msg)
+	/* Err will Back to Client*/
+	//fill
+	err := comm.FillSSPkg(pss_msg , ss.SS_PROTO_TYPE_LOGIN_RSP , prsp)
 	if err != nil {
-		log.Err("%s pack failed! err:%v", _func_, err)
+		log.Err("%s gen ss failed! err:%v", _func_, err)
 		return
 	}
 
 	//send
-	ok = SendToServer(pconfig, buff, from_serv)
+	ok = SendToServ(pconfig, from_serv , pss_msg)
 	if !ok {
 		log.Err("%s send back to %d failed!", _func_, from_serv)
+	}
+}
+
+
+//cb_arg={0:preq 1:from_server 2:pss_msg}
+func cb_update_online(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
+	var _func_ = "<cb_update_online>"
+	log := comm_config.Log
+
+	/*---------mostly common logic--------------*/
+	pconfig, ok := comm_config.ServerCfg.(*Config)
+	if !ok {
+		log.Err("%s get config failed! cb:%v", _func_, cb_arg)
 		return
 	}
-	log.Err("%s send back to %d success!", _func_, from_serv)
-	return
+
+	/*convert callback arg*/
+	preq, ok := cb_arg[0].(*ss.MsgLoginReq)
+	if !ok {
+		log.Err("%s conv req failed! cb:%v", _func_, cb_arg)
+		return
+	}
+
+	from_serv, ok := cb_arg[1].(int)
+	if !ok {
+		log.Err("%s conv from failed! cb:%v", _func_, cb_arg)
+		return
+	}
+
+	pss_msg , ok := cb_arg[2].(*ss.SSMsg)
+	if !ok {
+		log.Err("%s conv ss_msg failed! cb:%v", _func_, cb_arg)
+		return
+	}
+
+	uid := pss_msg.GetLoginRsp().Uid
+	/*---------result handle--------------*/
+	//check error
+	if err, ok := result.(error); ok {
+		log.Err("%s reply error! uid:%d err:%v", _func_, uid , err)
+		return
+	}
+
+	/*Get Result*/
+	ret_code, err := comm.Conv2Int(result)
+	if err != nil {
+		log.Err("%s conv result failed! uid:%d err:%v", _func_, uid, err)
+		return
+	}
+	log.Debug("%s ret_code:%d name:%s uid:%d", _func_, ret_code, preq.Name , uid)
+
+	//Back to Client
+	ok = SendToServ(pconfig, from_serv , pss_msg)
+	if !ok {
+		log.Err("%s send back to %d failed!", _func_, from_serv)
+	}
 }
+
 
 //
 //cb_arg := []interface{}{from , Uid , Reason};
 func cb_update_online_logout(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
-	var _func_ = "<cb_update_online_logout>";
-	log := comm_config.Log;
-
+	var _func_ = "<cb_update_online_logout>"
+	log := comm_config.Log
 
 	//Get Result
-	if err , ok := result.(error); ok {
-		log.Err("%s failed! err:%v uid:%v reason:%v" , _func_ , err , cb_arg[1] , cb_arg[2]);
-		return;
+	if err, ok := result.(error); ok {
+		log.Err("%s failed! err:%v uid:%v reason:%v", _func_, err, cb_arg[1], cb_arg[2])
+		return
 	}
 
-    log.Info("%s done! ret:%v uid:%v reason:%v" , _func_ , result , cb_arg[1] , cb_arg[2]);
-    return;
+	log.Info("%s done! ret:%v uid:%v reason:%v", _func_, result, cb_arg[1], cb_arg[2])
+	return
 }
 
 //cb_arg := []interface{}{from , Uid , Reason};
 func cb_save_user_logout(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
-	var _func_ = "<cb_save_user_logout>";
-	log := comm_config.Log;
-
+	var _func_ = "<cb_save_user_logout>"
+	log := comm_config.Log
 
 	//Get Result
-	if err , ok := result.(error); ok {
-		log.Err("%s failed! err:%v uid:%v reason:%v" , _func_ , err , cb_arg[1] , cb_arg[2]);
-		return;
+	if err, ok := result.(error); ok {
+		log.Err("%s failed! err:%v uid:%v reason:%v", _func_, err, cb_arg[1], cb_arg[2])
+		return
 	}
 
-	log.Info("%s done! ret:%v uid:%v reason:%v" , _func_ , result , cb_arg[1] , cb_arg[2]);
-	return;
+	log.Info("%s done! ret:%v uid:%v reason:%v", _func_, result, cb_arg[1], cb_arg[2])
+	return
 }

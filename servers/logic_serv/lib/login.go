@@ -27,7 +27,7 @@ func RecvLoginReq(pconfig *Config, preq *ss.MsgLoginReq, msg []byte, from int) {
 		preq.GetCKey(), from)
 
 	//direct send
-	ok := SendToDb(pconfig, msg)
+	ok := SendToDbBytes(pconfig, msg)
 	if !ok {
 		log.Err("%s send failed!", _func_)
 		return
@@ -84,17 +84,26 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp, msg []byte) {
 		log_content := fmt.Sprintf("%d|%s|LoginFlow|%d|%s|%s|%d" , pconfig.ProcId , pconfig.ProcName , uid , prsp.Name ,
 			prsp.UserInfo.BasicInfo.Addr,curr_ts)
 		pconfig.NetLog.Log("|" , log_content)
+
+
+		//repack ss_msg
+		var ss_msg ss.SSMsg
+
+	    //fill
+	    err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOGIN_RSP , prsp)
+		if err != nil {
+			log.Err("%s gen ss_msg failed! err:%v" , _func_ , err)
+			return
+		}
+
+		SendToConnect(pconfig , &ss_msg)
+		return
 	default:
 		//nothing to do
 	}
 
 	/**Back to Client*/
-	ok := SendToConnect(pconfig, msg)
-	if !ok {
-		log.Err("%s send to connect failed! user:%s", _func_, prsp.Name)
-		return
-	}
-	//log.Debug("%s send to connect success! user:%s", _func_, prsp.Name)
+	SendToConnectBytes(pconfig, msg)
 }
 
 func SendDupUserKick(pconfig *Config, prsp *ss.MsgLoginRsp) {
@@ -124,7 +133,7 @@ func SendDupUserKick(pconfig *Config, prsp *ss.MsgLoginRsp) {
 	}
 
 	//send
-	if !SendToDispHash(pconfig, prsp.Uid, enc_data) {
+	if !SendToDisp(pconfig, prsp.Uid, enc_data) {
 		log.Err("%s send to disp failed! uid:%d", _func_, prsp.Uid)
 	}
 	log.Debug("%s send to disp success! name:%s uid:%d", _func_, prsp.Name, prsp.Uid)
@@ -197,20 +206,17 @@ func UserLogout(pconfig *Config , uid int64 , reason ss.USER_LOGOUT_REASON) {
 
 	//save info
 	var ss_msg ss.SSMsg
-	ss_msg.ProtoType = ss.SS_PROTO_TYPE_LOGOUT_REQ
-	body := new(ss.SSMsg_LogoutReq)
-	body.LogoutReq = new(ss.MsgLogoutReq)
-	body.LogoutReq.Uid = uid
-	body.LogoutReq.Reason = reason
-	body.LogoutReq.UserInfo = ponline.user_info
-	ss_msg.MsgBody = body
+	pLogoutReq := new(ss.MsgLogoutReq)
+	pLogoutReq.Uid = uid
+	pLogoutReq.Reason = reason
+	pLogoutReq.UserInfo = ponline.user_info
 
-	//pack and send
-	buff, err := ss.Pack(&ss_msg)
+	//fill and send
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOGOUT_REQ , pLogoutReq)
 	if err != nil {
 		log.Err("%s pack failed! uid:%d reason:%d err:%v", _func_, uid, reason, err)
 	} else {
-		if !SendToDb(pconfig, buff) {
+		if !SendToDb(pconfig, &ss_msg) {
 			log.Err("%s send to db failed! uid:%v reason:%v", _func_, uid, reason)
 		}
 	}
@@ -239,29 +245,21 @@ func SendLogoutRsp(pconfig *Config, uid int64, reason ss.USER_LOGOUT_REASON, msg
 
 	//msg
 	var ss_msg ss.SSMsg
-	ss_msg.ProtoType = ss.SS_PROTO_TYPE_LOGOUT_RSP
-	body := new(ss.SSMsg_LogoutRsp)
-	body.LogoutRsp = new(ss.MsgLogoutRsp)
-	body.LogoutRsp.Uid = uid
-	body.LogoutRsp.Reason = reason
-	body.LogoutRsp.Msg = msg
-	ss_msg.MsgBody = body
+	pLogoutRsp := new(ss.MsgLogoutRsp)
+	pLogoutRsp.Uid = uid
+	pLogoutRsp.Reason = reason
+	pLogoutRsp.Msg = msg
 
-	//encode
-	buff, err := ss.Pack(&ss_msg)
+
+	//fill
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOGOUT_RSP , pLogoutRsp)
 	if err != nil {
-		log.Err("%s pack rsp failed! err:%v uid:%v reason:%v", _func_, err, uid, reason)
+		log.Err("%s gen ss failed! err:%v uid:%v reason:%v", _func_, err, uid, reason)
 		return
 	}
 
 	//to connect
-	ok := SendToConnect(pconfig, buff)
-	if !ok {
-		log.Err("%s send back failed! uid:%v reason:%v", _func_, uid, reason)
-		return
-	}
-	log.Debug("%s send back success! uid:%v reason:%v", _func_, uid, reason)
-	return
+	SendToConnect(pconfig, &ss_msg)
 }
 
 //check client timeout without heartbeat

@@ -16,36 +16,24 @@ func SendHeartBeatMsg(arg interface{}) {
 	if !ok {
 		return;
 	}
-	lp := pconfig.Comm.Log;
+	log := pconfig.Comm.Log;
 	
 	//proto
-    var ss_req ss.SSMsg;
-    ss_req.ProtoType = ss.SS_PROTO_TYPE_HEART_BEAT_REQ;
-    hb := new(ss.SSMsg_HeartBeatReq);
-    hb.HeartBeatReq = new(ss.MsgHeartBeatReq); 
-    hb.HeartBeatReq.Ts = time.Now().Unix();
-    ss_req.MsgBody = hb;
+    var ss_msg ss.SSMsg;
+    pHeartBeatReq := new(ss.MsgHeartBeatReq);
+    pHeartBeatReq.Ts = time.Now().Unix();
 
-    //pack
-    buff , err := ss.Pack(&ss_req);
+
+    //gen
+    err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_HEART_BEAT_REQ , pHeartBeatReq);
     if err != nil {
-    	lp.Err("%s pack failed! err:%v" , _func_ , err);
-    	return;
+    	log.Err("%s gen ss failed! err:%v" , _func_ , err);
     } else {
-    	//lp.Debug("%s pack success! buff:%v len:%d cap:%d" , _func_ , buff , len(buff) , cap(buff));
-    }
-    
-    
-    proc := pconfig.Comm.Proc;
-    //send msg
-    for _ , logic_id := range pconfig.FileConfig.LogicServList {
-		ret := proc.Send(logic_id, buff, len(buff));
-		if ret < 0 {
-			lp.Err("send msg to %d failed! err:%d", logic_id, ret);
+		for _ , logic_id := range pconfig.FileConfig.LogicServList {
+			SendToServ(pconfig , logic_id , &ss_msg)
 		}
-	}
-    
-    
+    }
+
     //report
     pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_HEART , curr_ts , "" , nil);
     //pconfig.ReportServ.Report(comm.REPORT_PROTO_CONN_NUM , int64(pconfig.TcpServ.GetConnNum()) , "ClientConn" , nil);

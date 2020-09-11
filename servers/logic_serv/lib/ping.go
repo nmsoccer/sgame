@@ -2,6 +2,7 @@ package lib
 
 import (
     "sgame/proto/ss"
+	"sgame/servers/comm"
 )
 
 func RecvPingReq(pconfig *Config , preq *ss.MsgPingReq , from int) {
@@ -10,24 +11,21 @@ func RecvPingReq(pconfig *Config , preq *ss.MsgPingReq , from int) {
 	
 	log.Debug("%s get ping req! client_key:%v ts:%v from:%d" , _func_ , preq.ClientKey , preq.Ts , from);	
 	//Back
-	var  rsp ss.SSMsg;
-	rsp.ProtoType = ss.SS_PROTO_TYPE_PING_RSP;
-	    //body
-	pbody := new(ss.SSMsg_PingRsp);
-	pbody.PingRsp = new(ss.MsgPingRsp);
-	pbody.PingRsp.ClientKey = preq.ClientKey;
-	pbody.PingRsp.Ts = preq.Ts;
-	rsp.MsgBody = pbody;
+	var  ss_msg ss.SSMsg;
+	pPingRsp := new(ss.MsgPingRsp);
+	pPingRsp.ClientKey = preq.ClientKey;
+	pPingRsp.Ts = preq.Ts;
+
 	
 	//encode
-	buff , err := ss.Pack(&rsp);
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_PING_RSP , pPingRsp);
 	if err != nil {
-		log.Err("%s pack rsp failed! err:%v key:%v" , _func_ , err , preq.ClientKey);
+		log.Err("%s gen ss failed! err:%v key:%v" , _func_ , err , preq.ClientKey);
 		return;
 	}
 	
 	//sendback
-	ok := SendToConnect(pconfig, buff);
+	ok := SendToConnect(pconfig, &ss_msg);
 	if !ok {
 		log.Err("%s send back failed! key:%v" , _func_ , preq.ClientKey);
 		return;

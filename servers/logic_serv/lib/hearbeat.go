@@ -11,56 +11,33 @@ func SendHeartBeatMsg(arg interface{}) {
 	var pconfig *Config;
 	var _func_ = "<SendHeartBeatMsg>";
 	curr_ts := time.Now().Unix();
-	/*
-
-	if ((curr_ts-last_send) < heart_beat_circle) {
-		return;
-	}
-	
-	//go>>>
-	last_send = curr_ts;
-	 */
 	pconfig , ok := arg.(*Config);
 	if !ok {
 		return;
 	}
-	lp := pconfig.Comm.Log;
+	log := pconfig.Comm.Log;
 	
 	//proto
-    var ss_req ss.SSMsg;
-    ss_req.ProtoType = ss.SS_PROTO_TYPE_HEART_BEAT_REQ;
-    hb := new(ss.SSMsg_HeartBeatReq);
-    hb.HeartBeatReq = new(ss.MsgHeartBeatReq);
-    hb.HeartBeatReq.Ts = time.Now().Unix();
-    ss_req.MsgBody = hb;
+    var ss_msg ss.SSMsg;
+    pHeartBeatReq := new(ss.MsgHeartBeatReq);
+    pHeartBeatReq.Ts = time.Now().Unix();
 
-    //pack
-    buff , err := ss.Pack(&ss_req);
+
+    //gen
+    err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_HEART_BEAT_REQ , pHeartBeatReq);
     if err != nil {
-    	lp.Err("%s pack failed! err:%v" , _func_ , err);
-    	return;
+    	log.Err("%s gen ss failed! err:%v" , _func_ , err);
     } else {
-    	//lp.Debug("%s pack success! buff:%v len:%d cap:%d" , _func_ , buff , len(buff) , cap(buff));
-    }
-    
-    
-    proc := pconfig.Comm.Proc;
-    //send msg
-      //to conn
-    ret := proc.Send(pconfig.FileConfig.ConnServ , buff , len(buff));
-    if ret < 0 {
-	    lp.Err("send msg to %d failed! err:%d" , pconfig.FileConfig.ConnServ , ret);
-    }
-      //to db
-    ret = proc.Send(pconfig.FileConfig.DbServ , buff , len(buff));
-    if ret < 0 {
-	    lp.Err("send msg to %d failed! err:%d" , pconfig.FileConfig.DbServ , ret);
-    }
-      //to disp
-    for _ , disp_serv := range pconfig.FileConfig.DispServList {
-		ret = proc.Send(disp_serv , buff , len(buff));
-		if ret < 0 {
-			lp.Err("send msg to %d failed! err:%d" , disp_serv , ret);
+		//send msg
+		//to conn
+    	SendToConnect(pconfig , &ss_msg)
+
+		//to db
+		SendToDb(pconfig , &ss_msg)
+
+		//to disp
+		for _, disp_serv := range pconfig.FileConfig.DispServList {
+			SendToServ(pconfig , disp_serv , &ss_msg)
 		}
 	}
 

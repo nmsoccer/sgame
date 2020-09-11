@@ -20,6 +20,7 @@ enum SS_PROTO_TYPE {
   REG_REQ = 8;
   REG_RSP = 9;  
   USE_DISP_PROTO = 10;  // serv <--> disp <--> serv
+  //new proto defined should add to servers/comm/ss_wrapper.go:FillSSPkg
 }
 
 enum SS_COMMON_RESULT {
@@ -68,9 +69,10 @@ message MsgPingRsp {
 //login
 message MsgLoginReq { 
   int64 c_key = 20;
-  string name = 21;
-  string pass=22;
-  string device=23;
+  int64 uid = 21; //0 use default role
+  string name = 22; //acc name
+  string pass=23;
+  string device=24;    
 }
 
 enum USER_LOGIN_RET {
@@ -84,7 +86,7 @@ enum USER_LOGIN_RET {
 message MsgLoginRsp {
   USER_LOGIN_RET result=1;
   int64 c_key=2;
-  string name=3;
+  string name=3; //account name
   int64 uid = 4; //may empty
   UserInfo user_info=20;
   int32 online_logic=21;

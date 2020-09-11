@@ -11,46 +11,26 @@ func SendHeartBeatMsg(arg interface{}) {
 	var pconfig *Config
 	var _func_ = "<SendHeartBeatMsg>"
 	curr_ts := time.Now().Unix()
-	/*
-
-		if ((curr_ts-last_send) < heart_beat_circle) {
-			return;
-		}
-
-		//go>>>
-		last_send = curr_ts;
-	*/
 	pconfig, ok := arg.(*Config)
 	if !ok {
 		return
 	}
-	lp := pconfig.Comm.Log
+	log := pconfig.Comm.Log
 
-	//proto
-	var ss_req ss.SSMsg
-	ss_req.ProtoType = ss.SS_PROTO_TYPE_HEART_BEAT_REQ
-	hb := new(ss.SSMsg_HeartBeatReq)
-	hb.HeartBeatReq = new(ss.MsgHeartBeatReq)
-	hb.HeartBeatReq.Ts = time.Now().Unix()
-	ss_req.MsgBody = hb
-
-	//pack
-	buff, err := ss.Pack(&ss_req)
+	//ss_msg
+	var ss_msg ss.SSMsg
+	pheart := new(ss.MsgHeartBeatReq)
+	pheart.Ts = curr_ts
+	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_HEART_BEAT_REQ , pheart)
 	if err != nil {
-		lp.Err("%s pack failed! err:%v", _func_, err)
-		return
+		log.Err("%s gen ss_msg failed! err:%v" , _func_ , err)
 	} else {
-		//lp.Debug("%s pack success! buff:%v len:%d cap:%d" , _func_ , buff , len(buff) , cap(buff));
-	}
-
-	proc := pconfig.Comm.Proc
-	//send msg
-	for _, target_id := range pconfig.FileConfig.TargetServs {
-		ret := proc.SendByLock(target_id, buff, len(buff)) //db_server should use lock by sending proc
-		if ret < 0 {
-			lp.Err("send msg to %d failed! err:%d", target_id, ret)
+		//send msg
+		for _, target_id := range pconfig.FileConfig.TargetServs {
+			SendToServ(pconfig , target_id , &ss_msg)
 		}
 	}
+
 
 	//report
 	pconfig.ReportServ.Report(comm.REPORT_PROTO_SERVER_HEART, curr_ts, "", nil)

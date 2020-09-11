@@ -90,7 +90,7 @@ func DirecToDb(pconfig *Config , proto_id ss.SS_PROTO_TYPE , from int , msg []by
 
 	log.Debug("%s proto:%v from:%d" , _func_ , proto_id , from);
 	//to db
-	ok := SendToDb(pconfig, msg)
+	ok := SendToDbBytes(pconfig, msg)
 	if !ok {
 		log.Err("%s send failed! proto:%v from:%d", _func_ , proto_id , from);
 		return
@@ -102,7 +102,7 @@ func DirecToConnect(pconfig *Config , proto_id ss.SS_PROTO_TYPE , from int , msg
 	log := pconfig.Comm.Log;
 
 	log.Debug("%s proto:%v from:%d" , _func_ , proto_id , from);
-	ok := SendToConnect(pconfig, msg)
+	ok := SendToConnectBytes(pconfig, msg)
 	if !ok {
 		log.Err("%s send to connect failed! proto:%v from:%d", _func_, proto_id , from);
 		return

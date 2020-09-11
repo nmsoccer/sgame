@@ -145,7 +145,7 @@ func (pclient *RedisClient) RedisExeCmd(pconfig *CommConfig, cb_func RedisCallBa
 	go func() {
 		defer func() {
 			if err := recover(); err != nil {
-				pclient.comm_config.Log.Err("redis exe cmd panic!")
+				pclient.comm_config.Log.Err("redis exe cmd panic! err:%v" , err)
 				return
 			}
 		}()
