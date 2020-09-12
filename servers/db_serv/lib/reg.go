@@ -149,11 +149,22 @@ func cb_alloc_uid(comm_config *comm.CommConfig, result interface{}, cb_arg []int
 		return
 	}
 
+	//generate salt
+	salt , err := comm.GenRandStr(PASSWD_SALT_LEN)
+	if err != nil {
+		log.Err("%s generate salt failed! err:%v name:%s" , _func_ , err , preq.Name)
+		SendRegRsp(pconfig, preq, from, ss.REG_RESULT_REG_DB_ERR)
+		return
+	}
+
+	//enc pass
+	enc_pass := comm.EncPassString(preq.Pass , salt)
+
 	//set user_global[users:global:name]
 	log.Info("%s uid:%d try to set user global. name:%s", _func_, uid, preq.Name)
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GLOBAL, preq.Name)
 	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_set_global_info, append(cb_arg, uid), "HMSET", tab_name, "uid", uid,
-		"pass", preq.Pass)
+		"pass", enc_pass , "salt" , salt)
 }
 
 //set global

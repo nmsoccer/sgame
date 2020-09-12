@@ -58,41 +58,52 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp) {
 	//msg
 	pmsg.Result = int(prsp.Result)
 	pmsg.Name = prsp.Name
+
 	//success
 	if prsp.Result == ss.USER_LOGIN_RET_LOGIN_SUCCESS {
-		//basic
-		pmsg.Basic.Uid = prsp.GetUserInfo().BasicInfo.Uid
-		pmsg.Basic.Name = prsp.GetUserInfo().BasicInfo.Name
-		pmsg.Basic.Addr = prsp.UserInfo.BasicInfo.Addr
-		pmsg.Basic.Level = prsp.UserInfo.BasicInfo.Level
-		if prsp.UserInfo.BasicInfo.Sex {
-			pmsg.Basic.Sex = 1
-		} else {
-			pmsg.Basic.Sex = 0
-		}
-
-		//blob
-		pblob := prsp.UserInfo.GetBlobInfo();
-
-		//detail
-		pmsg.Detail.Exp = prsp.UserInfo.BlobInfo.Exp;
-		pmsg.Detail.Depot = new(cs.UserDepot);
-		pmsg.Detail.Depot.Items = make(map[int64]*cs.Item);
-		if pblob.Depot!= nil && pblob.GetDepot().Items != nil {
-			for instid, pitem := range prsp.UserInfo.BlobInfo.Depot.Items {
-				pmsg.Detail.Depot.Items[instid] = new(cs.Item);
-				pmsg.Detail.Depot.Items[instid].Instid = instid;
-				pmsg.Detail.Depot.Items[instid].Count = pitem.Count;
-				pmsg.Detail.Depot.Items[instid].Attr = pitem.Attr;
-				pmsg.Detail.Depot.Items[instid].ResId = pitem.Resid;
+		for {
+			//check if multi-clients connect to same connect_serv
+			old_key, ok := pconfig.Uid2Ckey[prsp.Uid]
+			if ok && old_key != prsp.CKey {
+				log.Err("%s user:%d already logon at %d now is:%d abandon!", _func_, prsp.Uid, old_key, prsp.CKey)
+				pmsg.Result = int(ss.USER_LOGIN_RET_LOGIN_MULTI_ON)
+				break
 			}
-			pmsg.Detail.Depot.ItemsCount = prsp.UserInfo.BlobInfo.Depot.ItemsCount;
+
+			//basic
+			pmsg.Basic.Uid = prsp.Uid
+			pmsg.Basic.Name = prsp.GetUserInfo().BasicInfo.Name
+			pmsg.Basic.Addr = prsp.UserInfo.BasicInfo.Addr
+			pmsg.Basic.Level = prsp.UserInfo.BasicInfo.Level
+			if prsp.UserInfo.BasicInfo.Sex {
+				pmsg.Basic.Sex = 1
+			} else {
+				pmsg.Basic.Sex = 0
+			}
+
+			//blob
+			pblob := prsp.UserInfo.GetBlobInfo();
+
+			//detail
+			pmsg.Detail.Exp = prsp.UserInfo.BlobInfo.Exp;
+			pmsg.Detail.Depot = new(cs.UserDepot);
+			pmsg.Detail.Depot.Items = make(map[int64]*cs.Item);
+			if pblob.Depot != nil && pblob.GetDepot().Items != nil {
+				for instid, pitem := range prsp.UserInfo.BlobInfo.Depot.Items {
+					pmsg.Detail.Depot.Items[instid] = new(cs.Item);
+					pmsg.Detail.Depot.Items[instid].Instid = instid;
+					pmsg.Detail.Depot.Items[instid].Count = pitem.Count;
+					pmsg.Detail.Depot.Items[instid].Attr = pitem.Attr;
+					pmsg.Detail.Depot.Items[instid].ResId = pitem.Resid;
+				}
+				pmsg.Detail.Depot.ItemsCount = prsp.UserInfo.BlobInfo.Depot.ItemsCount;
+			}
+
+			//create map refer
+			pconfig.Ckey2Uid[prsp.CKey] = pmsg.Basic.Uid
+			pconfig.Uid2Ckey[pmsg.Basic.Uid] = prsp.CKey
+			break
 		}
-
-
-		//create map refer
-		pconfig.Ckey2Uid[prsp.CKey] = pmsg.Basic.Uid
-		pconfig.Uid2Ckey[pmsg.Basic.Uid] = prsp.CKey
 	}
 
 	//to client

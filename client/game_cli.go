@@ -128,7 +128,7 @@ func RecvPkg(conn *net.TCPConn) {
 			prsp, ok := gmsg.SubMsg.(*cs.CSLoginRsp)
 			if ok {
 				if prsp.Result == 0 {
-					v_print("login result:%d name:%s\n", prsp.Result, prsp.Name)
+					v_print("login result:%d name:%s role_name:%s\n", prsp.Result, prsp.Name , prsp.Basic.Name)
 					v_print("uid:%v sex:%d addr:%s level:%d Exp:%d ItemCount:%d\n", prsp.Basic.Uid, prsp.Basic.Sex, prsp.Basic.Addr,
 						prsp.Basic.Level, prsp.Detail.Exp , prsp.Detail.Depot.ItemsCount)
                     for instid , pitem := range prsp.Detail.Depot.Items {

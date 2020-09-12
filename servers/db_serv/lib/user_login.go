@@ -102,9 +102,11 @@ func cb_user_login_check_pass(comm_config *comm.CommConfig, result interface{}, 
 
 		pass := sm["pass"]
 		uid := sm["uid"]
-		log.Debug("%s get pass:%s uid:%s", _func_, pass, uid)
+		salt := sm["salt"]
+		log.Debug("%s try to check pass! uid:%s", _func_, uid)
 		//check pass
-		if preq.GetPass() != pass {
+		enc_pass := comm.EncPassString(preq.Pass , salt)
+		if enc_pass != pass {
 			log.Info("%s pass not matched! user:%s c_key:%v ", _func_, preq.Name, preq.CKey)
 			prsp.Result = ss.USER_LOGIN_RET_LOGIN_PASS
 			break

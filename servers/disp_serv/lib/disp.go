@@ -19,7 +19,7 @@ func RecvDispMsg(pconfig *Config , pdisp *ss.MsgDisp , from int , msg []byte) {
 			log.Err("%s fail! spec method but spec server not set!" ,_func_)
 			return
 		}
-		SendToServBytes(pconfig , int(pdisp.SpecServer) , msg)
+		SendToServ(pconfig , int(pdisp.SpecServer) , msg)
 		return
 	}
 
@@ -62,5 +62,5 @@ func DispToLogicServ(pconfig *Config , pdisp *ss.MsgDisp , msg []byte) {
 
 	//send to target
 	log.Debug("%s send to:%d method:%d hash:%d" , _func_ , target_serv , pdisp.Method , pdisp.HashV)
-	SendToServBytes(pconfig , target_serv , msg)
+	SendToServ(pconfig , target_serv , msg)
 }

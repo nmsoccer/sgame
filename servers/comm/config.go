@@ -1,6 +1,9 @@
 package comm
 
 import(
+	md52 "crypto/md5"
+	"encoding/hex"
+	"errors"
 	"math/rand"
 	"sgame/lib/log"
     "sgame/lib/proc"
@@ -29,9 +32,9 @@ const (
 
 	SELECT_METHOD_RAND = 1 //select id by rand
 	SELECT_METHOD_HASH = 2 //select by hash
+
+	RAND_STR_POOL = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ012345678!@#$%^&*()-_=+?<>;:"
 )
-
-
 
 
 
@@ -246,5 +249,31 @@ func SelectProperServ(pconfig *CommConfig , method int , hash_v int64  , candida
 	}
 
 	return -1
+}
+
+//generate rand str lenth==str_len
+func GenRandStr(str_len int) (string , error) {
+	if str_len>1000 {
+		return "" , errors.New("length too long!")
+	}
+
+	b := make([]byte , str_len)
+	pool_len := len(RAND_STR_POOL)
+	pos := 0
+	for i:=0; i<str_len; i++ {
+		pos = rand.Intn(pool_len)
+		b[i] = RAND_STR_POOL[pos]
+	}
+
+	return string(b) , nil
+}
+
+//enc password
+func EncPassString(pass string , salt string) string {
+	md5 := md52.New()
+	md5.Write([]byte(pass))
+	md5.Write([]byte(salt))
+	res := md5.Sum(nil)
+	return hex.EncodeToString(res)
 }
 

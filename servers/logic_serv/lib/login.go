@@ -27,7 +27,7 @@ func RecvLoginReq(pconfig *Config, preq *ss.MsgLoginReq, msg []byte, from int) {
 		preq.GetCKey(), from)
 
 	//direct send
-	ok := SendToDbBytes(pconfig, msg)
+	ok := SendToDb(pconfig, msg)
 	if !ok {
 		log.Err("%s send failed!", _func_)
 		return
@@ -103,7 +103,7 @@ func RecvLoginRsp(pconfig *Config, prsp *ss.MsgLoginRsp, msg []byte) {
 	}
 
 	/**Back to Client*/
-	SendToConnectBytes(pconfig, msg)
+	SendToConnect(pconfig, msg)
 }
 
 func SendDupUserKick(pconfig *Config, prsp *ss.MsgLoginRsp) {
