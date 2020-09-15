@@ -1,5 +1,5 @@
 # sgame
-A Simple Game Framework  一个简单的游戏框架  
+A Simple Game Server Framework  一个简单的游戏服务端框架  
 
 ### Features
 * **开发语言** 除在进程通信和日志等模块使用了C作为基础库以外，所有的上层逻辑均由go编写，便于使用go标准库的丰富资源
