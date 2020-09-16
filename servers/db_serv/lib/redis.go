@@ -8,14 +8,17 @@ import (
 * ##tables desc##
 * #users:global:[name]  <hash> name | pass | uid | salt
 * #user:[uid] <hash>  uid | name | age | sex  | addr | level | online_logic | blob_info
+* #user:login_lock:[uid] <string> valid_second
 * #global:uid <string>
  */
 
 
 const (
 	PASSWD_SALT_LEN = 32
+	LOGIN_LOCK_LIFE = 20 //login lock life (second)
 	FORMAT_TAB_USER_GLOBAL="users:global:%s" //users:global:[name]  ++ hash ++ name | pass | uid | salt
 	FORMAT_TAB_USER_INFO_REFIX="user:" // user:[uid] ++ hash ++ uid | name | age | sex  | addr | level | online_logic | blob_info
+	FORMAT_TAB_USER_LOGIN_LOCK_PREFIX="user:login_lock:" //user:login:[uid] <string> valid_second
 	FORMAT_TAB_GLOBAL_UID="global:uid" // ++ string
 )
 

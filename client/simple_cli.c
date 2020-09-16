@@ -4,8 +4,8 @@
  * This is a Demo Client Connect SGame Server Using C.
  * Test Ping Proto.
  *
- * Build:  gcc simple_cli.c ../lib/net/net_pkg.c -o simple_cli
-           ./simple_cli <port>
+ * Build:  gcc -g -I../lib/net/ ../lib/net/net_pkg.c simple_cli.c -o simple_cli_c
+           ./simple_cli_c <port>
  * More Info:https://github.com/nmsoccer/sgame/wiki/mulit-connect
  * Created on: 2020.8.6
  * Author: nmsoccer
@@ -17,7 +17,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <errno.h>
-
+#include "net_pkg.h"
 
 extern int errno;
 #define CONN_SERVER_IP "127.0.0.1"
@@ -26,6 +26,71 @@ int show_help()
 {
 	printf("usage: ./simple_cli <port>\n");
 	return 0;
+}
+
+int ValidConnect(int conn_fd)
+{
+    char cmd[1024] = {0};
+    char pkg_buff[1024] = {0};
+    char recv_buff[1024] = {0};
+    unsigned char tag = 0;
+    int pkg_len = 0;
+    int data_len = 0;
+    int ret = 0;
+
+    snprintf(cmd , sizeof(cmd) , CONN_VALID_KEY);
+    //pack
+    pkg_len = PackPkg(pkg_buff, sizeof(pkg_buff) , cmd , strlen(cmd) , PKG_OP_VALID);
+    if(pkg_len <= 0)
+    {
+     	printf("pack valid pkg failed! ret:%d cmd:%s\n" , pkg_len , cmd);
+      	return -1;
+    }
+
+    //send to server
+    ret = send(conn_fd , pkg_buff , pkg_len , 0);
+    if(ret < 0)
+    {
+    	printf("send %s failed! err:%s\n" , cmd , strerror(errno));
+    	return -1;
+    }
+    printf(">>send valid cmd:%s success!\n" , cmd);
+
+    //recv
+    memset(recv_buff , 0 , sizeof(recv_buff));
+    ret = recv(conn_fd , recv_buff , sizeof(recv_buff) , 0);
+    if(ret < 0)
+    {
+    	printf("recv failed! ret:%d err:%s\n" , ret , strerror(errno));
+    	return -1;
+    }
+    if(ret == 0)
+    {
+    	printf("server closed!\n");
+    	return -1;
+    }
+
+    //unpack
+    memset(pkg_buff , 0 , sizeof(pkg_buff));
+    tag = UnPackPkg(recv_buff , ret , pkg_buff , sizeof(pkg_buff) , &data_len , &pkg_len);
+    if(tag==0xFF)
+    {
+    	printf("unpack failed!\n");
+    	return -1;
+    }
+    if(tag == 0xEF)
+    {
+    	printf("pkg_buff not enough!\n");
+    	return -1;
+    }
+    if(tag == 0)
+    {
+        printf("data not ready!\n");
+        return -1;
+    }
+    printf("<<recv from server: %s data_len:%d pkg_len:%d tag:%d\n" , pkg_buff , data_len , pkg_len , tag);
+
+    return 0;
 }
 
 
@@ -81,6 +146,12 @@ int main(int argc , char **argv)
 	}
 	printf("connect to %s:%d success!\n" , CONN_SERVER_IP , port);
 
+    //Validate Connection
+    if(ValidConnect(conn_fd) < 0)
+    {
+      printf("valid failed!\n");
+      return;
+    }
 
 	//Test Ping
 	/*

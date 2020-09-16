@@ -65,7 +65,7 @@ public class simple_cli {
             OutputStream outToServer = client.getOutputStream();
             DataOutputStream out = new DataOutputStream(outToServer);
             out.write(pkg_buff , (int)0 , pkg_len);
-            System.out.printf(">>send cmd:%s data_len:%d pkg_len:%d success!\n" , cmd , cmd.length() , pkg_len);
+            System.out.printf(">>send cmd:%s data_len:%d pkgpk_len:%d success!\n" , cmd , cmd.length() , pkg_len);
 
             //recv
             InputStream inFromServer = client.getInputStream();

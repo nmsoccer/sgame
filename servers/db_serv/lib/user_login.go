@@ -114,8 +114,21 @@ func cb_user_login_check_pass(comm_config *comm.CommConfig, result interface{}, 
 
 		//sucess. get user info
 		if preq.Uid == 0 { //default role
-			tab_name := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%s", uid)
-			pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_user_login_get_info, cb_arg, "HGETALL", tab_name)
+			//conv uid
+			preq.Uid , err = strconv.ParseInt(uid , 10 , 64)
+			if err != nil {
+				log.Err("%s conv uid failed! err:%v uid:%s" , _func_ , err , uid)
+				prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR
+				break;
+			}
+
+			//try to lock
+			log.Debug("%s try to lock login. uid:%d name:%s" , _func_ , preq.Uid , preq.Name)
+			tab_name := fmt.Sprintf(FORMAT_TAB_USER_LOGIN_LOCK_PREFIX+"%s" , uid)
+			pconfig.RedisClient.RedisExeCmd(pconfig.Comm , cb_user_login_lock , cb_arg , "SET" , tab_name , uid , "EX" ,
+				LOGIN_LOCK_LIFE, "NX")
+			//tab_name := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%s", uid)
+			//pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_user_login_get_info, cb_arg, "HGETALL", tab_name)
 		}
 		return
 	}
@@ -138,6 +151,64 @@ func cb_user_login_check_pass(comm_config *comm.CommConfig, result interface{}, 
 	return
 }
 
+
+//cb_arg={0:preq 1:from_server}
+func cb_user_login_lock(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {
+	var _func_ = "<cb_user_login_lock>"
+	log := comm_config.Log
+
+	/*---------mostly common logic--------------*/
+	pconfig, ok := comm_config.ServerCfg.(*Config)
+	if !ok {
+		log.Err("%s get config failed! cb:%v", _func_, cb_arg)
+		return
+	}
+
+	/*convert callback arg*/
+	preq, ok := cb_arg[0].(*ss.MsgLoginReq)
+	if !ok {
+		log.Err("%s conv cb failed!", _func_)
+		return
+	}
+
+	from_serv, ok := cb_arg[1].(int)
+	if !ok {
+		log.Err("%s conv from failed! cb:%v", _func_, cb_arg)
+		return
+	}
+
+	log.Debug("%s user:%s c_key:%v", _func_, preq.GetName(), preq.GetCKey())
+	/*---------result handle--------------*/
+	//check error
+	if err, ok := result.(error); ok {
+		log.Err("%s reply error! name:%s err:%v", _func_, preq.Name, err)
+		return
+	}
+
+	//check result
+	if result == nil { //in login process
+		log.Err("%s is in login process! uid:%d name:%s" , _func_ , preq.Uid , preq.Name)
+		//rsp
+		var ss_msg ss.SSMsg
+		prsp := new(ss.MsgLoginRsp)
+		prsp.CKey = preq.CKey
+		prsp.Name = preq.Name
+		prsp.Result = ss.USER_LOGIN_RET_LOGIN_MULTI_ON
+
+		if err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOGIN_RSP , prsp); err != nil {
+			log.Err("%s gen ss failed! err:%v name:%s" , _func_ , err , preq.Name)
+		} else {
+            SendToServ(pconfig , from_serv , &ss_msg)
+		}
+		return
+	}
+
+
+	//get user info
+	log.Debug("%s ok! try to get user_info. uid:%d name:%s" , _func_ , preq.Uid , preq.Name)
+	tab_name := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d", preq.Uid)
+	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_user_login_get_info, cb_arg, "HGETALL", tab_name)
+}
 
 //cb_arg={0:preq 1:from_server}
 func cb_user_login_get_info(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {

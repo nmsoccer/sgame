@@ -29,12 +29,13 @@ const (
 	INT_MAX = 0x7FFFFFF0
 	//pkg option
 	PKG_OP_NORMAL = 0  //normal pkg
-	PKG_OP_ECHO   = 1  //echo client <-> tcp-serv
-	PKG_OP_STAT   = 2  //display tcp server stat
+	PKG_OP_ECHO   = 1   //echo client <-> tcp-serv
+	PKG_OP_VALID   = 2  //valid connection client-->server[validate] server-->client[enc_key if enc enable]
+	PKG_OP_RSA_NEGO = 3  //encrypt by rsa_pub_key to negotiate des key client-->server[encrypted key] server-->client[result]
 	PKG_OP_MAX    = 32 //max option value
 
-	//STAT_KEY
-	FETCH_STAT_KEY = "cs...39&suomei...32&withdraw"
+	//VALID_KEY
+	CONN_VALID_KEY = "c#s..x*.39&suomeI./().32&show+me_tHe_m0ney$"
 )
 
 

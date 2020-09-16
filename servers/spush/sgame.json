@@ -6,8 +6,8 @@
   "remote_pass":"****" ,
   
   "procs":[
-    {"name":"conn_serv-1" , "bin":["../conn_serv/conn_serv"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group1/conn_serv/" , "cmd":"./conn_serv -N sgame -p 10001 -P conn_serv-1 -f conf/conn_serv.json -D"},
-	{"name":"conn_serv-2" , "bin":["../conn_serv/conn_serv"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group2/conn_serv/" , "cmd":"./conn_serv -N sgame -p 10002 -P conn_serv-2 -f conf/conn_serv.json -D"},
+    {"name":"conn_serv-1" , "bin":["../conn_serv/conn_serv" , "../conn_serv/cfg"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group1/conn_serv/" , "cmd":"./conn_serv -N sgame -p 10001 -P conn_serv-1 -f conf/conn_serv.json -D"},
+	{"name":"conn_serv-2" , "bin":["../conn_serv/conn_serv" , "../conn_serv/cfg"] , "host":"127.0.0.1" , "host_dir":"/home/nmsoccer/sg/group2/conn_serv/" , "cmd":"./conn_serv -N sgame -p 10002 -P conn_serv-2 -f conf/conn_serv.json -D"},
 	{"name":"logic_serv-1" , "bin":["../logic_serv/logic_serv" , "../logic_serv/table" , "../logic_serv/table_desc"] , "host":"" , "host_dir":"/home/nmsoccer/sg/group1/logic_serv/" , "cmd":"./logic_serv -N sgame -p 20001 -P logic_serv-1 -f conf/logic_serv.json -D"},
     {"name":"logic_serv-2" , "bin":["../logic_serv/logic_serv" , "../logic_serv/table" , "../logic_serv/table_desc"] , "host":"" , "host_dir":"/home/nmsoccer/sg/group2/logic_serv/" , "cmd":"./logic_serv -N sgame -p 20002 -P logic_serv-2 -f conf/logic_serv.json -D"},	
     {"name":"db_logic_serv-1" ,   "bin":["../db_serv/db_serv"] , "host":"" , "host_dir":"/home/nmsoccer/sg/group1/db_serv/" , "cmd":"./db_serv -N sgame -p 30001 -P db_logic_serv-1 -f conf/db_serv.json -D"},

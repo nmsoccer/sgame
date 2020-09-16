@@ -18,17 +18,10 @@ Tag   +    Len         +          Value
 
 */
 #include <string.h>
+#include "net_pkg.h"
 
 #define TAG_LEN  1
 #define INT_MAX  0x7FFFFFF0
-//pkg option
-#define PKG_OP_NORMAL 0  //normal pkg
-#define PKG_OP_ECHO   1  //echo client <-> tcp-serv
-#define PKG_OP_STAT   2  //display tcp server stat
-#define PKG_OP_MAX   32 //max option value
-
-//STAT_KEY
-#define FETCH_STAT_KEY  "cs...39&suomei...32&withdraw"
 
 static int pack_head(char *buff , int buff_len , unsigned int data_len , unsigned char pkg_option);
 static int unpack_head(char *buff , int buff_len , unsigned char *tag , unsigned int *data_len);
@@ -214,7 +207,7 @@ static int pack_head(char *buff , int buff_len , unsigned int data_len , unsigne
 unpack head from buff
 @return 0:data not-ready, -1:failed , ELSE:success (head_len)
 */
-static int unpack_head(char *buff , int buff_len , unsigned char *tag , unsigned int *data_len)
+static int unpack_head(char *buff , int buff_len , unsigned char *tag , int *data_len)
 {
     unsigned char b_len;
     if(buff_len < TAG_LEN)
@@ -232,7 +225,7 @@ static int unpack_head(char *buff , int buff_len , unsigned char *tag , unsigned
     	    return 0;
 
         *tag = buff[0];
-        *data_len = (unsigned int)buff[1];
+        *data_len = (unsigned char)buff[1];
         return TAG_LEN + 1;
     }
 
