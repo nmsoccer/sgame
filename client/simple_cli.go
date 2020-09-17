@@ -32,6 +32,54 @@ const (
 var host = "127.0.0.1";
 var port = flag.Int("p", 0, "server port");
 
+func ValidConnec(conn *net.TCPConn) bool {
+	//pack
+	pkg_buff := make([]byte , 128)
+	pkg_len := lnet.PackPkg(pkg_buff , []byte(lnet.CONN_VALID_KEY) , lnet.PKG_OP_VALID)
+	if pkg_len <= 0 {
+		fmt.Printf("valid connection pack failed! pkg_len:%d\n" , pkg_len)
+		return false
+	}
+
+	//send
+	_, err := conn.Write(pkg_buff[:pkg_len])
+	if err != nil {
+		fmt.Printf("send valid pkg failed! err:%v\n", err)
+		return false
+	}
+	fmt.Printf("send valid success! pkg_len:%d valid_key:%s\n", pkg_len , lnet.CONN_VALID_KEY)
+
+
+	//read
+	read_buff := make([]byte , BUFF_LEN);
+	n, err := conn.Read(read_buff)
+	if err != nil {
+		fmt.Printf("read failed! err:%v\n", err)
+		return false;
+	}
+
+
+	//Unpack
+	tag , pkg_data, pkg_len := lnet.UnPackPkg(read_buff[:n])
+	if(tag==0xFF){
+		fmt.Printf("unpack failed!\n");
+		return false;
+	}
+	if(tag == 0xEF){
+		fmt.Printf("pkg_buff not enough!\n");
+		return false;
+	}
+	if(tag == 0){
+		fmt.Printf("data not ready!\n");
+		return false;
+	}
+	fmt.Printf("<< from server:data_len:%d pkg_len:%d tag:%d option:%d\n" , len(pkg_data) , pkg_len ,
+		tag , lnet.PkgOption(tag));
+
+	return true
+}
+
+
 
 func main() {
 	flag.Parse();
@@ -60,11 +108,17 @@ func main() {
 
 	var cmd string
 	curr_ts := time.Now().UnixNano()/1000000;
+	//Valid Conn
+	if ValidConnec(conn) == false {
+		fmt.Printf("valid conn failed!")
+		return
+	}
+
+
 	//Test Ping
 	/*
 	 * create json request refer sgame/proto/cs/: api.go and ping.proto.go
 	 */
-
 	//Encode  cmd
 	cmd = fmt.Sprintf("{\"proto\":1 , \"sub\":{\"ts\":%d}}" , curr_ts);
 	enc_data := []byte(cmd);
@@ -92,7 +146,7 @@ func main() {
 		return;
 	}
 
-
+    fmt.Printf("recv:%v\n" , read_buff[:n])
 	//Unpack
 	tag , pkg_data, pkg_len := lnet.UnPackPkg(read_buff[:n])
 	if(tag==0xFF){
@@ -107,8 +161,8 @@ func main() {
 		fmt.Printf("data not ready!\n");
 		return;
 	}
-	fmt.Printf("<< from server:%s data_len:%d pkg_len:%d tag:%d\n" , string(pkg_data) ,  len(pkg_data) , pkg_len ,
-		tag);
+	fmt.Printf("<< from server:%s data_len:%d pkg_len:%d tag:%d option:%d\n" , string(pkg_data) ,  len(pkg_data) , pkg_len ,
+		tag , lnet.PkgOption(tag));
 
 	return;
 }

@@ -24,16 +24,12 @@ public class net_pkg {
     //pkg option
     public final static byte PKG_OP_NORMAL = 0;  //normal pkg
     public final static byte PKG_OP_ECHO =  1;  //echo client <-> tcp-serv
-    public final static byte PKG_OP_STAT =  2;  //display tcp server stat
+    public final static byte PKG_OP_VALID   = 2;  //valid connection client-->server[validate] server-->client[enc_key if enc enable]
+    public final static byte PKG_OP_RSA_NEGO = 3;  //encrypt by rsa_pub_key to negotiate des key client-->server[encrypted key] server-->client[result]
     public final static byte PKG_OP_MAX =  32; //max option value
 
-    //STAT_KEY
-    public final static String FETCH_STAT_KEY = "cs...39&suomei...32&withdraw";
-
-
-    public static void Fuck() {
-        System.out.println("fuck");
-    }
+    //VALID_KEY
+    public final static String CONN_VALID_KEY = "c#s..x*.39&suomeI./().32&show+me_tHe_m0ney$";
 
     /*
     Pack pkg_data to pkg_buff

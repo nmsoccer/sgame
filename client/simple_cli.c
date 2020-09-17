@@ -88,7 +88,7 @@ int ValidConnect(int conn_fd)
         printf("data not ready!\n");
         return -1;
     }
-    printf("<<recv from server: %s data_len:%d pkg_len:%d tag:%d\n" , pkg_buff , data_len , pkg_len , tag);
+    printf("<<recv from server: %s data_len:%d pkg_len:%d tag:%d option:%d\n" , pkg_buff , data_len , pkg_len , tag , PkgOption(tag));
 
     return 0;
 }
@@ -210,7 +210,7 @@ int main(int argc , char **argv)
 	    printf("data not ready!\n");
         return -1;
 	}
-	printf("<<recv from server: %s data_len:%d pkg_len:%d tag:%d\n" , pkg_buff , data_len , pkg_len , tag);
+	printf("<<recv from server: %s data_len:%d pkg_len:%d tag:%d option:%d\n" , pkg_buff , data_len , pkg_len , tag , PkgOption(tag));
 
 
 	close(conn_fd);

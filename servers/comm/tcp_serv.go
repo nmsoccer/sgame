@@ -255,6 +255,7 @@ func (pserv *TcpServ) Send(pconfig *CommConfig, ppkg *ClientPkg) int {
 		pdata = new(queue_data);
 	}
 	pdata.info = QUEUE_INFO_NORMAL
+	pdata.flag = lnet.PKG_OP_NORMAL
 	//pdata.idx = idx; 这里故意不设置idx防止竞争读取kep_map 指导tcp_serv主协程去设置
 	pkg_data = ppkg.Data
 
@@ -266,7 +267,6 @@ func (pserv *TcpServ) Send(pconfig *CommConfig, ppkg *ClientPkg) int {
 		pdata.data = make([]byte , len(pkg_data));
 	}
 	copy(pdata.data , pkg_data);
-	//pdata.data = ppkg.Data
 	pdata.key = ppkg.ClientKey
 	//check pkg type
 	switch ppkg.PkgType {
@@ -685,7 +685,7 @@ func (pclient *tcp_client) handle_spec_pkg(pconfig *CommConfig, pserv *TcpServ, 
 		pclient.append_send_data(pconfig, pdata)
 	case lnet.PKG_OP_VALID:
 		log.Info("%s pkg option:%d [valid] key:%s", _func_, pdata.flag , string(pclient.enc_key))
-		if bytes.Compare(pkg_data, []byte(lnet.CONN_VALID_KEY)) != 0 {
+		if pclient.need_valid && bytes.Compare(pkg_data, []byte(lnet.CONN_VALID_KEY)) != 0 {
 			log.Err("%s get stat fail! illegal key!", _func_)
 			break
 		}
@@ -1101,8 +1101,9 @@ func (pclient *tcp_client) send(pconfig *CommConfig, pserv *TcpServ) {
 			log.Err("%s pack error! will drop pkg! idx:%d", _func_, pclient.index)
 			break
 		}
-		//log.Debug("%s pkg_len:%d" , _func_ , pkg_len);
+
 		pclient.snd_cache = pclient.snd_cache[:pkg_len]
+		//log.Debug("%s pkg_len:%d data:%v flag:%d" , _func_ , pkg_len , pclient.snd_cache , pdata.flag);
 
 		//flush cache
 		ret = pclient.flush_send_cache(pconfig, pserv)

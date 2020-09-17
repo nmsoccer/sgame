@@ -18,6 +18,68 @@ import java.util.*;
 public class simple_cli {
     private static String CONN_SERVER_IP = "127.0.0.1";
 
+    private static boolean valid_conn(Socket client) throws IOException{
+        String _func_ = "<valid_conn>";
+        byte[] buff;
+        byte[] pkg_buff;
+        int pkg_len;
+        int data_len;
+        int tag;
+        int i;
+        int ret = 0;
+
+        buff = new byte[1024];
+        pkg_buff = new byte[1024];
+        //Valid
+        String cmd = net_pkg.CONN_VALID_KEY;
+
+        //pack cmd
+        pkg_len = net_pkg.PackPkg(pkg_buff , cmd.getBytes() , net_pkg.PKG_OP_VALID);
+        if(pkg_len <= 0){
+            System.out.printf("%s pack failed! pkg_len:%d" , _func_ , pkg_len);
+            return false;
+        }
+
+        //send
+        OutputStream outToServer = client.getOutputStream();
+        DataOutputStream out = new DataOutputStream(outToServer);
+        out.write(pkg_buff , (int)0 , pkg_len);
+        System.out.printf(">>send cmd:%s data_len:%d pkg_len:%d success!\n" , cmd , cmd.length() , pkg_len);
+
+        //recv
+        InputStream inFromServer = client.getInputStream();
+        DataInputStream in = new DataInputStream(inFromServer);
+        ret = in.read(buff);
+        if(ret <= 0) {
+            System.out.printf("%s read failed! ret:%d\n" , _func_ , ret);
+            return false;
+        }
+
+        //unpack
+        Arrays.fill(pkg_buff, (byte)0);
+        int[] pkg_attr = new int[2];
+        tag = net_pkg.UnPackPkg(buff , pkg_buff , pkg_attr);
+        if(tag==0xFF){
+            System.out.printf("%s unpack failed!\n" , _func_);
+            return false;
+        }
+        if(tag == 0xEF){
+            System.out.printf("%s pkg_buff not enough!\n" , _func_);
+            return false;
+            }
+        if(tag == 0){
+            System.out.printf("%s data not ready!\n" , _func_);
+            return false;
+        }
+        data_len = pkg_attr[0];
+        pkg_len = pkg_attr[1];
+        byte[] result = new byte[data_len];
+        System.arraycopy(pkg_buff, 0 , result, 0, data_len);
+        System.out.printf("<<from server:data_len:%d pkg_len:%d tag:%d option:%d\n" , data_len , pkg_len , tag ,
+        net_pkg.PkgOption((byte)tag));
+        return true;
+    }
+
     public static void main(String[] args) {
         byte[] buff;
         byte[] pkg_buff;
@@ -45,6 +107,13 @@ public class simple_cli {
             System.out.println("target:" + CONN_SERVER_IP + "port:" + port);
             Socket client = new Socket(CONN_SERVER_IP, port);
             System.out.println("target_addr:" + client.getRemoteSocketAddress());
+
+            //valid_conn
+            if(valid_conn(client) == false) {
+                System.out.println("valid conn failed!");
+                return;
+            }
+
 
             //Test Ping
             /*
@@ -97,7 +166,8 @@ public class simple_cli {
             byte[] result = new byte[data_len];
             System.arraycopy(pkg_buff, 0 , result, 0, data_len);
             String resp = new String(result);
-            System.out.printf("<<from server: %s data_len:%d pkg_len:%d tag:%d\n" , resp , data_len , pkg_len , tag);
+            System.out.printf("<<from server: %s data_len:%d pkg_len:%d tag:%d option:%d\n" , resp , data_len , pkg_len , tag ,
+            net_pkg.PkgOption((byte)tag));
 
 
 

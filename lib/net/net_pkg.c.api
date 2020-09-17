@@ -207,7 +207,7 @@ static int pack_head(char *buff , int buff_len , unsigned int data_len , unsigne
 unpack head from buff
 @return 0:data not-ready, -1:failed , ELSE:success (head_len)
 */
-static int unpack_head(char *buff , int buff_len , unsigned char *tag , int *data_len)
+static int unpack_head(char *buff , int buff_len , unsigned char *tag , unsigned int *data_len)
 {
     unsigned char b_len;
     if(buff_len < TAG_LEN)
