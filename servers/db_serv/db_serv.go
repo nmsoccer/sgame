@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"sgame/servers/db_serv/lib"
+	"time"
 )
 
 var config lib.Config
@@ -49,6 +50,7 @@ func main() {
 	//self set
 	if lib.LocalSet(pconfig) == false {
 		fmt.Printf("self set failed!\n")
+		time.Sleep(1 * time.Second)
 		return
 	}
 

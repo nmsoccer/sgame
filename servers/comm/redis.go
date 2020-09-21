@@ -1,6 +1,28 @@
+/*
+Redis Wrapper of redigo
+
+EXE Redis Two Methods:
+1) Asynchronously Using CallBack
+RedisClient.RedisExeCmd(pconfig *CommConfig, cb_func RedisCallBack, cb_arg []interface{}, cmd string, arg ...interface{})
+
+2) Synchronise Using SyncCmdHead
+constraint:Must In an independant go-routine and Release After Alloc
+example:
+func RecvXXPackage() {
+  go func() {
+    SyncCmdHead phead = RedisClient.AllocSyncCmdHead()  //1.
+    defer RedisClient.FreeSyncCmdHead(phead)  //2.
+    ...
+    RedisClient.RedisExeCmdSync(phead , ...)  //3.
+  }
+}
+
+*/
+
 package comm
 
 import (
+	"errors"
 	"github.com/gomodule/redigo/redis"
 	"sync"
 	"time"
@@ -44,6 +66,12 @@ type RedisClient struct {
 	block_queue  chan int8    //block request. cap is unlimited. init:1M
 	reset_queue  chan bool    //reset flag
 	reset_attr   reset_attr  //reset attr if new setting
+}
+
+//redis exe cmd using synchronized
+type SyncCmdHead struct {
+	conn redis.Conn
+	idx  int
 }
 
 //call back
@@ -131,7 +159,7 @@ func (pclient *RedisClient) Reset(redis_addr string , auth string , max_conn int
 
 
 
-//redis exe cmd
+//redis exe cmd Asynchronously
 //warning:if cb_arg includes pointer , you may not change it's member unlese new memory.
 func (pclient *RedisClient) RedisExeCmd(pconfig *CommConfig, cb_func RedisCallBack, cb_arg []interface{}, cmd string, arg ...interface{}) {
 	//check blocked queue
@@ -205,6 +233,88 @@ func (pclient *RedisClient) RedisExeCmd(pconfig *CommConfig, cb_func RedisCallBa
 
 	}()
 }
+
+//Alloc Synchronise Cmd Head
+//Warning:
+//1.This Method Must Be Put in an independent go-routine or will block main process
+//2.Must Release Head After using head
+func (pclient *RedisClient) AllocSyncCmdHead() *SyncCmdHead {
+	var _func_ = "<redis_client.AllocSyncCmdHead>"
+	pconfig := pclient.comm_config
+	log := pconfig.Log
+
+	//check blocked queue
+	len_block := len(pclient.block_queue)
+	if len_block >= cap(pclient.block_queue) {
+		log.Err("RedisExeCmd failed! block routine too may! please check system! %d", len_block)
+		return nil
+	}
+
+	//throw block
+	pclient.block_queue <- 1
+
+
+	//occupy connection
+	var idx int = -1
+	for i:=0; i<5; i++ { //try best to occupy a valid connection
+		idx = <-pclient.idle_queue
+		//log.Debug("%s get idle idx:%d remain:%d " , _func_ , idx , len(pclient.idle_queue));
+
+		//check idx valid(if reset may let it invalid!)
+		if pclient.conn_stats[idx] != REDIS_CONN_DONE || pclient.conns[idx] == nil {
+			log.Err("%s connection not valid! idx:%d", _func_, idx)
+			continue
+		}
+
+		//valid
+		break
+	}
+	if idx < 0 || pclient.conn_stats[idx]!=REDIS_CONN_DONE || pclient.conns[idx]==nil{
+		log.Err("%s valid connection still not found! will drop request!", _func_)
+		<-pclient.block_queue
+		return nil
+	}
+
+	//return success
+	phead := new(SyncCmdHead)
+	phead.idx = idx
+	phead.conn = pclient.conns[idx]
+	return phead
+}
+
+// redis exe cmd synchronised
+//warning:synchronize cmd should be in an independent go-routine
+func (pclient *RedisClient) RedisExeCmdSync(phead *SyncCmdHead , cmd string, arg ...interface{}) (interface{} , error){
+	defer func() {
+		if err := recover(); err != nil {
+			pclient.comm_config.Log.Err("redis exe cmd panic! err:%v" , err)
+			return
+		}
+	}()
+
+	if phead == nil || phead.conn==nil {
+		return nil , errors.New("phead nil!")
+	}
+
+	reply, err := phead.conn.Do(cmd, arg...)
+	if err != nil {
+		return nil , err
+	}
+	return reply , nil
+}
+
+
+//Release Synchronise Cmd Head
+func (pclient *RedisClient) FreeSyncCmdHead(phead *SyncCmdHead) {
+	//free connection
+	if phead.idx < pclient.max_count { //valid idx will put again
+		pclient.idle_queue <- phead.idx
+	}
+	//unblock
+	<-pclient.block_queue
+	pclient.comm_config.Log.Debug("redis_client.FreeSyncCmdHead Finish")
+}
+
 
 func (pclient *RedisClient) Close(pconfig *CommConfig) {
 	//close_redis_conn(pclient, pconfig, nil)

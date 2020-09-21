@@ -20,6 +20,10 @@ const (
 	FORMAT_TAB_USER_INFO_REFIX="user:" // user:[uid] ++ hash ++ uid | name | age | sex  | addr | level | online_logic | blob_info
 	FORMAT_TAB_USER_LOGIN_LOCK_PREFIX="user:login_lock:" //user:login:[uid] <string> valid_second
 	FORMAT_TAB_GLOBAL_UID="global:uid" // ++ string
+
+	//Useful FIELD
+	FIELD_USER_INFO_ONLINE_LOGIC = "online_logic"
+
 )
 
 
