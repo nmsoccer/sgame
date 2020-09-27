@@ -94,14 +94,11 @@ func RecvUserLogoutReq(pconfig *Config , preq *ss.MsgLogoutReq , from int) {
 	log := pconfig.Comm.Log
 
 	//check info
-	if preq.UserInfo == nil || preq.UserInfo.BasicInfo.Uid != preq.Uid {
-		log.Err("%s fail! user_info not illegal! uid:%d reason:%d", _func_, preq.Uid, preq.Reason)
-		return
-	}
-	log.Debug("%s user:%s uid:%d reason:%d", _func_, preq.UserInfo.BasicInfo.Name, preq.Uid, preq.Reason)
-
+	log.Debug("%s uid:%d reason:%d", _func_, preq.Uid, preq.Reason)
 	//synchronise
 	go func() {
+		var err error
+		var res interface{}
 		//Get SyncHead
 		phead := pconfig.RedisClient.AllocSyncCmdHead()
 		if phead == nil {
@@ -112,22 +109,25 @@ func RecvUserLogoutReq(pconfig *Config , preq *ss.MsgLogoutReq , from int) {
 
 		//Exe Cmds
 		user_tab := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d", preq.Uid)
-		puser_info := preq.UserInfo
-		user_blob, err := ss.Pack(preq.UserInfo.BlobInfo)
-		if err != nil {
-			log.Err("%s save user_info failed! pack blob info fail! err:%v uid:%d", _func_, err, preq.Uid)
-			return
+		if preq.UserInfo!=nil && preq.Reason!=ss.USER_LOGOUT_REASON_LOGOUT_OFFLINE_USER {
+			puser_info := preq.UserInfo
+			user_blob, err := ss.Pack(preq.UserInfo.BlobInfo)
+			if err != nil {
+				log.Err("%s save user_info failed! pack blob info fail! err:%v uid:%d", _func_, err, preq.Uid)
+				return
+			}
+			res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "HMSET", user_tab, "addr", puser_info.BasicInfo.Addr, "level",
+				puser_info.BasicInfo.Level, FIELD_USER_INFO_ONLINE_LOGIC, -1, "blob_info", string(user_blob))
+		} else { //only update online-logic
+			res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "HSET", user_tab, FIELD_USER_INFO_ONLINE_LOGIC, -1)
 		}
-		result , err := pconfig.RedisClient.RedisExeCmdSync(phead , "HMSET", user_tab, "addr",
-			puser_info.BasicInfo.Addr, "level", puser_info.BasicInfo.Level, FIELD_USER_INFO_ONLINE_LOGIC, -1 , "blob_info", string(user_blob))
 
 		//Get Result
 		if err != nil{
 			log.Err("%s failed! err:%v uid:%d reason:%d", _func_, err , preq.Uid , preq.Reason)
-			return
+		} else {
+			log.Info("%s done! ret:%v uid:%d reason:%d", _func_, res, preq.Uid, preq.Reason)
 		}
-
-		log.Info("%s done! ret:%v uid:%d reason:%d", _func_, result, preq.Uid , preq.Reason)
 		return
 	}()
 

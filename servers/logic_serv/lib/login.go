@@ -18,6 +18,18 @@ type OnLineList struct {
 	user_map    map[int64]*UserOnLine
 }
 
+/*
+Get UserOnLine Info by Uid
+*/
+func GetUserInfo(pconfig *Config, uid int64) *UserOnLine {
+	pinfo, exist := pconfig.Users.user_map[uid]
+	if !exist {
+		return nil
+	}
+	return pinfo
+}
+
+
 func RecvLoginReq(pconfig *Config, preq *ss.MsgLoginReq, msg []byte, from int) {
 	var _func_ = "<RecvLoginReq>"
 	log := pconfig.Comm.Log
@@ -192,9 +204,19 @@ func UserLogout(pconfig *Config , uid int64 , reason ss.USER_LOGOUT_REASON) {
 	log := pconfig.Comm.Log;
 
 	//get online info
-	ponline, ok := pconfig.Users.user_map[uid]
-	if !ok {
-		log.Info("%s uid:%d is offline!", _func_, uid)
+	ponline := GetUserInfo(pconfig, uid)
+	if ponline == nil {
+		log.Info("%s uid:%d is offline! will logout off-mode", _func_, uid)
+		//will modify online-logic
+		var ss_msg ss.SSMsg
+		pLogoutReq := new(ss.MsgLogoutReq)
+		pLogoutReq.Uid = uid
+		pLogoutReq.Reason = ss.USER_LOGOUT_REASON_LOGOUT_OFFLINE_USER
+		err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOGOUT_REQ , pLogoutReq)
+		if err != nil {
+			log.Err("%s pack failed! uid:%d reason:%d err:%v", _func_, uid, reason, err)
+		}
+		SendToDb(pconfig, &ss_msg)
 		return
 	}
 

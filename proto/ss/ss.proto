@@ -99,6 +99,7 @@ enum USER_LOGOUT_REASON {
   LOGOUT_SERVER_KICK_RECONN = 2; //server kickout for reconn
   LOGOUT_SERVER_KICK_BAN = 3; //server kickout for ban
   LOGOUT_CLIENT_TIMEOUT = 4; //client timeout
+  LOGOUT_OFFLINE_USER   = 5; //user off-line still logout update online-logic
 }
 
 
