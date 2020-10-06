@@ -138,6 +138,11 @@ func LocalSet(pconfig *Config) bool {
 }
 
 func ServerExit(pconfig *Config) {
+	//Save Roles
+	SaveRolesOnExit(pconfig)
+	time.Sleep(1 * time.Second)
+
+
 	//close proc
 	if pconfig.Comm.Proc != nil {
 		pconfig.Comm.Proc.Close()

@@ -9,7 +9,12 @@ import (
 func RecvRegReq(pconfig *Config, preq *ss.MsgRegReq, from int) {
 	var _func_ = "<RecvRegReq>"
 	log := pconfig.Comm.Log
-	log.Info("%s user:%s addr:%s sex:%v from:%d", _func_, preq.Name, preq.Addr, preq.Sex, from)
+	log.Info("%s user:%s addr:%s sex:%v from:%d role_name:%s", _func_, preq.Name, preq.Addr, preq.Sex, from , preq.RoleName)
+
+	//common Check
+	if preq.RoleName == "" {
+		preq.RoleName = preq.Name
+	}
 
 	//set name
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_GLOBAL, preq.Name)
@@ -224,7 +229,7 @@ func cb_set_global_info(comm_config *comm.CommConfig, result interface{}, cb_arg
 		sex_v = 2
 	}
 	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_reg_set_user_info, cb_arg, "HMSET", tab_name, "uid", uid,
-		"name", "xxooxx", "addr", preq.Addr, "sex", sex_v , "online_logic", -1)
+		"name", preq.RoleName, "addr", preq.Addr, "sex", sex_v , "online_logic", -1)
 }
 
 func cb_reg_set_user_info(comm_config *comm.CommConfig, result interface{}, cb_arg []interface{}) {

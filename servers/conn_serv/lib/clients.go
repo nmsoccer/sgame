@@ -54,6 +54,28 @@ func init() {
 
 }
 
+/*Get ClientKey By Uid
+@Return:0 not exist; else ClientKey
+*/
+func GetClientKey(pconfig *Config , uid int64) int64 {
+	c_key, ok := pconfig.Uid2Ckey[uid]
+	if !ok {
+		return 0
+	}
+	return c_key
+}
+
+/*Get Uid By ClientKey
+@Return:0 not exist; else ClientKey
+*/
+func GetClientUid(pconfig *Config , c_key int64) int64 {
+	uid, ok := pconfig.Ckey2Uid[c_key]
+	if !ok {
+		return 0
+	}
+	return uid
+}
+
 
 func ReadClients(pconfig *Config) int64 {
 	defer func() {
@@ -169,6 +191,18 @@ func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
 
 	proto_id := gmsg.ProtoId
 	var conv_err = true
+	//Get Uid
+	uid := GetClientUid(pconfig , pclient.ClientKey)
+	if uid<=0 { //only some proto no uid
+		if proto_id!=cs.CS_PROTO_PING_REQ && proto_id!=cs.CS_PROTO_LOGIN_REQ && proto_id!=cs.CS_PROTO_REG_REQ {
+			log.Err("%s offline! c_key:%d proto_id:%d" , _func_ , pclient.ClientKey , proto_id)
+			return
+		}
+	} else {
+		log.Debug("%s recv proto:%d success! uid:%v", _func_, proto_id, uid)
+	}
+
+
 	//convert
 	switch proto_id {
 	case cs.CS_PROTO_PING_REQ:
@@ -186,14 +220,8 @@ func HandleClientPkg(pconfig *Config, pclient *comm.ClientPkg) {
 			conv_err = false
 		}
 	case cs.CS_PROTO_LOGOUT_REQ:
-		uid, exist := pconfig.Ckey2Uid[pclient.ClientKey]
-		if !exist {
-			log.Err("%s proto:%d but not login! key:%v", _func_, proto_id, pclient.ClientKey)
-			return
-		}
 		_, ok := gmsg.SubMsg.(*cs.CSLogoutReq)
 		if ok {
-			log.Debug("%s recv proto:%d success! uid:%v", _func_, proto_id, uid)
 			SendLogoutReq(pconfig, uid, ss.USER_LOGOUT_REASON_LOGOUT_CLIENT_EXIT)
 			conv_err = false
 		}

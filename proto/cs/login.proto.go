@@ -4,6 +4,7 @@ type CSLoginReq struct {
 	Name   string `json:"name"`
 	Pass   string `json:"pass"`
 	Device string `json:"device"`
+	Version string `json:"version"`
 }
 
 type CSLoginRsp struct {
@@ -26,6 +27,7 @@ type CSLogoutRsp struct {
 type CSRegReq struct {
 	Name string `json:"name"`
 	Pass string `json:"pass"`
+	RoleName string `json:"role_name"`
 	Sex  uint8  `json:"sex"`
 	Addr string `json:"addr"`
 }

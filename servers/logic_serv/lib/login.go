@@ -35,8 +35,8 @@ func RecvLoginReq(pconfig *Config, preq *ss.MsgLoginReq, msg []byte, from int) {
 	log := pconfig.Comm.Log
 
 	//log
-	log.Debug("%s login: user:%s pass:%s device:%s c_key:%v from:%d", _func_, preq.GetName(), preq.GetPass(), preq.GetDevice(),
-		preq.GetCKey(), from)
+	log.Debug("%s login: user:%s pass:%s device:%s c_key:%v from:%d version:%s", _func_, preq.GetName(), preq.GetPass(), preq.GetDevice(),
+		preq.GetCKey(), from , preq.Version)
 
 	//direct send
 	ok := SendToDb(pconfig, msg)

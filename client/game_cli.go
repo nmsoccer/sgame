@@ -54,9 +54,9 @@ func init() {
 	cmd_map = make(map[string]string)
 	//init cmd_map
 	cmd_map[CMD_PING] = "ping to server"
-	cmd_map[CMD_LOGIN] = "login <name> <pass>"
+	cmd_map[CMD_LOGIN] = "login <name> <pass> [version]"
 	cmd_map[CMD_LOGOUT] = "logout"
-	cmd_map[CMD_REG] = "register <name> <pass> <sex:1|2> <addr>"
+	cmd_map[CMD_REG] = "register <name> <pass> <role_name> <sex:1|2> <addr>"
 }
 
 func v_print(format string , arg ...interface{}) {
@@ -155,7 +155,7 @@ func RecvConnSpecPkg(tag uint8 , data []byte) {
 		if enc_type == lnet.NET_ENCRYPT_RSA {
 			rsa_pub_key := make([]byte , len(data)-1)
 			copy(rsa_pub_key , data[1:])
-			v_print("%s rsa_pub_key:%s\n" , _func_ , string(rsa_pub_key))
+			//v_print("%s rsa_pub_key:%s\n" , _func_ , string(rsa_pub_key))
 
 			//RSA ENC
 			enc_key = []byte("12345678")
@@ -350,8 +350,8 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub.TimeStamp = time.Now().UnixNano() / 1000
 		gmsg.SubMsg = psub
 
-	case CMD_LOGIN:
-		if len(args) != 3 {
+	case CMD_LOGIN: //login <name> <pass> [version]
+		if len(args) < 3 {
 			show_cmd();
 			return;
 		}
@@ -360,6 +360,9 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub.Name = args[1]
 		psub.Device = "onepluse9"
 		psub.Pass = args[2]
+		if len(args) == 4 {
+			psub.Version = args[3]
+		}
 		gmsg.SubMsg = psub
 		v_print("login...name:%s pass:%s\n", psub.Name, psub.Pass);
 	case CMD_LOGOUT:
@@ -369,8 +372,8 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub := new(cs.CSLogoutReq)
 		psub.Uid = 0
 		gmsg.SubMsg = psub
-	case CMD_REG: // register <name> <pass> <sex:1|2> <addr>
-		if len(args) != 5 {
+	case CMD_REG: //register <name> <pass> <role_name> <sex:1|2> <addr>
+		if len(args) != 6 {
 			show_cmd();
 			return;
 		}
@@ -378,14 +381,16 @@ func SendPkg(conn *net.TCPConn, cmd string) {
 		psub := new(cs.CSRegReq)
 		psub.Name = args[1];
 		psub.Pass = args[2];
-		sex_v , _ := strconv.Atoi(args[3]);
+		psub.RoleName = args[3]
+		sex_v , _ := strconv.Atoi(args[4]);
 		psub.Sex = uint8(sex_v);
-		psub.Addr = args[4];
-		v_print("reg... name:%s pass:%s sex:%d addr:%s\n", psub.Name, psub.Pass, psub.Sex, psub.Addr);
+		psub.Addr = args[5];
+		v_print("reg... name:%s pass:%s role_name:%s sex:%d addr:%s\n", psub.Name, psub.Pass, psub.RoleName , psub.Sex, psub.Addr);
 
 		gmsg.SubMsg = psub;
 	default:
 		fmt.Printf("illegal cmd:%s\n", cmd)
+		show_cmd()
 		return
 	}
 

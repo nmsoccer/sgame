@@ -18,6 +18,7 @@ func SendLoginReq(pconfig *Config, client_key int64, plogin_req *cs.CSLoginReq) 
 	pLoginReq.Name = plogin_req.Name
 	pLoginReq.Pass = plogin_req.Pass
 	pLoginReq.Device = plogin_req.Device
+	pLoginReq.Version = plogin_req.Version
 
 	//ss_msg
 	err := comm.FillSSPkg(&ss_msg , ss.SS_PROTO_TYPE_LOGIN_REQ , pLoginReq)
@@ -196,6 +197,7 @@ func SendRegReq(pconfig *Config, client_key int64, preq *cs.CSRegReq) {
 	pRegReq.Pass = preq.Pass;
 	pRegReq.Addr = preq.Addr;
 	pRegReq.CKey = client_key;
+	pRegReq.RoleName = preq.RoleName
 	if preq.Sex == 1 {
 		pRegReq.Sex = true;
 	} else {
