@@ -16,7 +16,7 @@ A Simple Game Server Framework  一个简单的游戏服务端框架
 ![架构](https://github.com/nmsoccer/sgame/blob/master/pic/sgame.png) 
 
 
-### 安装
+### 环境安装
 #### 基础软件
 * **GO**  
 下载页面https://golang.google.cn/dl/ 或者 https://golang.org/dl/  这里下载并使用go 1.14版本，然后
@@ -75,7 +75,7 @@ sxx库是几个支持库，安装简单且基本无依赖,下面均以手动安�
   一个进程通信组件，sgame里集成了proc_bridge，这里需要安装支持库即可. https://github.com/nmsoccer/proc_bridge 下载proc_bridge-master.zip到本地  
     * 解压安装:cd proc_bridge-master/src/library; ./install_lib.sh(root权限)，安装完毕. 更加详细的各种配置请参考https://github.com/nmsoccer/proc_bridge/wiki
   
-#### SGAME安装  
+### SGAME安装  
 这里仍然以手动安装为例
   * 下载安装    
   进入 https://github.com/nmsoccer/sgame; 下载sgame-master.zip到本地; 
