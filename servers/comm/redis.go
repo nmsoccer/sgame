@@ -38,7 +38,7 @@ const (
 var last_check int64
 
 const (
-	check_conn_circle = 5
+	check_conn_circle = 3
 	block_queue_len   = (100000) //max block go-routine ...
 )
 
@@ -72,6 +72,8 @@ type RedisClient struct {
 type SyncCmdHead struct {
 	conn redis.Conn
 	idx  int
+	freed bool
+	close bool //should close conn
 }
 
 //call back
@@ -164,7 +166,7 @@ func (pclient *RedisClient) Reset(redis_addr string , auth string , max_conn int
 func (pclient *RedisClient) RedisExeCmd(pconfig *CommConfig, cb_func RedisCallBack, cb_arg []interface{}, cmd string, arg ...interface{}) {
 	//check blocked queue
 	len_block := len(pclient.block_queue)
-	if len_block >= cap(pclient.block_queue) {
+	if len_block >= cap(pclient.block_queue) / 2 {
 		pconfig.Log.Err("RedisExeCmd failed! block routine too may! please check system! %d", len_block)
 		return
 	}
@@ -183,7 +185,9 @@ func (pclient *RedisClient) RedisExeCmd(pconfig *CommConfig, cb_func RedisCallBa
 
 		//throw block
 		pclient.block_queue <- 1
-		//log.Debug("%s block:%d" , _func_ , len(pclient.block_queue));
+		if len(pclient.block_queue) >= 10 {
+			log.Debug("%s block:%d", _func_, len(pclient.block_queue));
+		}
 
 
 		//occupy connection
@@ -210,10 +214,7 @@ func (pclient *RedisClient) RedisExeCmd(pconfig *CommConfig, cb_func RedisCallBa
 		//exe cmd
 		conn := pclient.conns[idx]
 		reply, err := conn.Do(cmd, arg...)
-		//free connection
-		if idx < pclient.max_count { //valid idx will put again
-			pclient.idle_queue <- idx
-		}
+
 		//unblock
 		<-pclient.block_queue
 
@@ -223,7 +224,24 @@ func (pclient *RedisClient) RedisExeCmd(pconfig *CommConfig, cb_func RedisCallBa
 			if cb_func != nil {
 				cb_func(pconfig, err, cb_arg) //return err as result
 			}
+
+			//check if net error
+			if IsNetError(err) {
+				log.Err("%s will close connection! idx:%d" , _func_ , idx)
+				pclient.err_queue <- idx
+			} else {	//normal error may maintain connection
+				//free connection
+				if idx < pclient.max_count { //valid idx will put again
+					pclient.idle_queue <- idx
+				}
+			}
+
 			return
+		}
+
+		//free connection
+		if idx < pclient.max_count { //valid idx will put again
+			pclient.idle_queue <- idx
 		}
 
 		//call-back
@@ -245,14 +263,13 @@ func (pclient *RedisClient) AllocSyncCmdHead() *SyncCmdHead {
 
 	//check blocked queue
 	len_block := len(pclient.block_queue)
-	if len_block >= cap(pclient.block_queue) {
+	if len_block >= cap(pclient.block_queue) / 2 {
 		log.Err("RedisExeCmd failed! block routine too may! please check system! %d", len_block)
 		return nil
 	}
 
 	//throw block
 	pclient.block_queue <- 1
-
 
 	//occupy connection
 	var idx int = -1
@@ -279,6 +296,8 @@ func (pclient *RedisClient) AllocSyncCmdHead() *SyncCmdHead {
 	phead := new(SyncCmdHead)
 	phead.idx = idx
 	phead.conn = pclient.conns[idx]
+	phead.freed = false
+	phead.close = false
 	return phead
 }
 
@@ -298,6 +317,9 @@ func (pclient *RedisClient) RedisExeCmdSync(phead *SyncCmdHead , cmd string, arg
 
 	reply, err := phead.conn.Do(cmd, arg...)
 	if err != nil {
+		if IsNetError(err) {
+			phead.close = true
+		}
 		return nil , err
 	}
 	return reply , nil
@@ -306,9 +328,20 @@ func (pclient *RedisClient) RedisExeCmdSync(phead *SyncCmdHead , cmd string, arg
 
 //Release Synchronise Cmd Head
 func (pclient *RedisClient) FreeSyncCmdHead(phead *SyncCmdHead) {
-	//free connection
-	if phead.idx < pclient.max_count { //valid idx will put again
-		pclient.idle_queue <- phead.idx
+	if phead.freed {
+		return
+	}
+
+	phead.freed = true
+	if phead.close {
+		//close
+		pclient.comm_config.Log.Info("redis_client.FreeSyncCmdHead will close connection idx:%d" , phead.idx)
+		pclient.err_queue <- phead.idx
+	} else {
+		//free connection
+		if phead.idx < pclient.max_count { //valid idx will put again
+			pclient.idle_queue <- phead.idx
+		}
 	}
 	//unblock
 	<-pclient.block_queue
@@ -316,9 +349,10 @@ func (pclient *RedisClient) FreeSyncCmdHead(phead *SyncCmdHead) {
 }
 
 
-func (pclient *RedisClient) Close(pconfig *CommConfig) {
+func (pclient *RedisClient) Close() {
 	//close_redis_conn(pclient, pconfig, nil)
-	pclient.err_queue <- 1
+	//pclient.err_queue <- 1
+	pclient.exit_queue <- true
 }
 
 func (pclient *RedisClient) GetConnNum() int {

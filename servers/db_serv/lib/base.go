@@ -11,8 +11,8 @@ type FileConfig struct {
 	//	ProcName string `json:"proc_name"`
 	TargetServs []int  `json:"target_servs"` //target serv set
 	LogFile     string `json:"log_file"`
-	//RedisOpen      int      `json:"redis_open"`
-	RedisAddr      string   `json:"redis_addr"`
+	RedisMethod    int      `json:"redis_method"`
+	RedisAddr      []string   `json:"redis_addr"`
 	MaxConn        int      `json:"max_conn"`    //max redis-conn of process
 	NormalConn     int      `json:"normal_conn"` //normal redis-conn
 	AuthPass       string   `json:"auth_pass"`
@@ -36,7 +36,7 @@ type Config struct {
 	ReportCmdToken int64
 	ReportServ     *comm.ReportServ //report to manger
 	//local
-	RedisClient *comm.RedisClient
+	RedisClients []*RedisClientInfo
 }
 
 //Comm Config Setting
@@ -81,12 +81,12 @@ func LocalSet(pconfig *Config) bool {
 	log := pconfig.Comm.Log
 
 	//connect to redis
-	pclient := OpenRedis(pconfig)
-	if pclient == nil {
-		log.Err("%s failed! open redis addr:%s fail!", _func_, pconfig.FileConfig.RedisAddr)
+	ok := OpenRedis(pconfig)
+	if !ok {
+		log.Err("%s failed! open redis addr:%v fail!", _func_, pconfig.FileConfig.RedisAddr)
 		return false
 	}
-	pconfig.RedisClient = pclient
+
 
 	//start report serv
 	pconfig.ReportServ = comm.StartReport(pconfig.Comm, pconfig.ProcId, pconfig.ProcName, pconfig.FileConfig.ManageAddr, comm.REPORT_METHOD_ALL,
@@ -102,7 +102,7 @@ func LocalSet(pconfig *Config) bool {
 	pconfig.Comm.TickPool.AddTicker("report_sync", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_REPORT_SYNC_DEFAULT, ReportSyncServer, pconfig)
 	pconfig.Comm.TickPool.AddTicker("init_redis", comm.TICKER_TYPE_SINGLE, (pconfig.Comm.StartTs+int64(pconfig.FileConfig.InitRedisAfter))*1000, 0,
 		InitRedisDb, pconfig)
-	pconfig.Comm.TickPool.AddTicker("heart2redis", comm.TICKER_TYPE_CIRCLE, 0, 60000, HeartBeatToRedis, pconfig)
+	pconfig.Comm.TickPool.AddTicker("heart2redis", comm.TICKER_TYPE_CIRCLE, 0, 10000, HeartBeatToRedis, pconfig)
 	pconfig.Comm.TickPool.AddTicker("recv_cmd", comm.TICKER_TYPE_CIRCLE, 0, comm.PERIOD_RECV_REPORT_CMD_DEFAULT, RecvReportCmd, pconfig)
 
 	return true
@@ -116,8 +116,8 @@ func ServerExit(pconfig *Config) {
 	}
 
 	//close redis
-	if pconfig.RedisClient != nil {
-		pconfig.RedisClient.Close(pconfig.Comm)
+	if len(pconfig.RedisClients) > 0 {
+		CloseRedis(pconfig)
 		time.Sleep(time.Second)
 	}
 

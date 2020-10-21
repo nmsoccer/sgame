@@ -7,18 +7,6 @@ import (
 	"strconv"
 )
 
-//user login using asynchronous
-func RecvUserLoginReqAsync(pconfig *Config, preq *ss.MsgLoginReq, from int) {
-	var _func_ = "<RecvUserLoginReq>"
-	log := pconfig.Comm.Log
-
-	log.Debug("%s user:%s pass:%s c_key:%d", _func_, preq.GetName(), preq.GetPass(), preq.GetCKey())
-	//query pass
-	cmd_arg := fmt.Sprintf(FORMAT_TAB_USER_GLOBAL, preq.Name)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_user_login_check_pass, []interface{}{preq, from},
-		"HGETALL", cmd_arg)
-}
-
 //user login
 func RecvUserLoginReq(pconfig *Config, preq *ss.MsgLoginReq, from int) {
 	var _func_ = "<RecvUserLoginReq>"
@@ -27,16 +15,24 @@ func RecvUserLoginReq(pconfig *Config, preq *ss.MsgLoginReq, from int) {
 	log.Debug("%s user:%s pass:%s c_key:%d", _func_, preq.GetName(), preq.GetPass(), preq.GetCKey())
 	//Sync Mod Must be In a routine
 	go func(){
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_RW)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! name:%s" , _func_ , preq.Name)
+			return
+		}
+
+
 		//Get SyncHead
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc synchead faileed! uid:%d" , _func_ , preq.Uid)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		//check pass
-		result , err := pconfig.RedisClient.RedisExeCmdSync(phead , "HGETALL", fmt.Sprintf(FORMAT_TAB_USER_GLOBAL, preq.Name))
+		result , err := pclient.RedisExeCmdSync(phead , "HGETALL", fmt.Sprintf(FORMAT_TAB_USER_GLOBAL, preq.Name))
 		if err != nil {
 			log.Err("%s query pass failed! name:%s" , _func_ , preq.Name)
 			return
@@ -49,7 +45,7 @@ func RecvUserLoginReq(pconfig *Config, preq *ss.MsgLoginReq, from int) {
 		//lock temp
 		log.Debug("%s try to lock login. uid:%d name:%s" , _func_ , preq.Uid , preq.Name)
 		tab_name := fmt.Sprintf(FORMAT_TAB_USER_LOGIN_LOCK_PREFIX+"%d" , preq.Uid)
-		result , err = pconfig.RedisClient.RedisExeCmdSync(phead , "SET" , tab_name , preq.Uid , "EX" ,
+		result , err = pclient.RedisExeCmdSync(phead , "SET" , tab_name , preq.Uid , "EX" ,
 			LOGIN_LOCK_LIFE, "NX")
 		if err != nil {
 			log.Err("%s lock login failed! name:%s uid:%d" , _func_ , preq.Name , preq.Uid)
@@ -63,7 +59,7 @@ func RecvUserLoginReq(pconfig *Config, preq *ss.MsgLoginReq, from int) {
 		//get user info
 		log.Debug("%s ok! try to get user_info. uid:%d name:%s" , _func_ , preq.Uid , preq.Name)
 		tab_name = fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d", preq.Uid)
-		result , err = pconfig.RedisClient.RedisExeCmdSync(phead, "HGETALL", tab_name)
+		result , err = pclient.RedisExeCmdSync(phead, "HGETALL", tab_name)
 		if err != nil {
 			log.Err("%s get user info failed! name:%s uid:%d" , _func_ , preq.Name , preq.Uid)
 			return
@@ -76,7 +72,7 @@ func RecvUserLoginReq(pconfig *Config, preq *ss.MsgLoginReq, from int) {
 		//update online_logic
 		log.Debug("%s update online logic! uid:%d", _func_ , preq.Uid)
 		tab_name = fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d", preq.Uid)
-		result , err = pconfig.RedisClient.RedisExeCmdSync(phead , "HSET", tab_name, FIELD_USER_INFO_ONLINE_LOGIC , from)
+		result , err = pclient.RedisExeCmdSync(phead , "HSET", tab_name, FIELD_USER_INFO_ONLINE_LOGIC , from)
 		if err != nil {
 			log.Err("%s update user online_logic failed! name:%s uid:%d" , _func_ , preq.Name , preq.Uid)
 			return
@@ -99,13 +95,20 @@ func RecvUserLogoutReq(pconfig *Config , preq *ss.MsgLogoutReq , from int) {
 	go func() {
 		var err error
 		var res interface{}
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_RW)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! uid:%d" , _func_ , preq.Uid)
+			return
+		}
+
 		//Get SyncHead
-		phead := pconfig.RedisClient.AllocSyncCmdHead()
+		phead := pclient.AllocSyncCmdHead()
 		if phead == nil {
 			log.Err("%s alloc synchead faileed! uid:%d" , _func_ , preq.Uid)
 			return
 		}
-		defer pconfig.RedisClient.FreeSyncCmdHead(phead)
+		defer pclient.FreeSyncCmdHead(phead)
 
 		//Exe Cmds
 		user_tab := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d", preq.Uid)
@@ -116,10 +119,10 @@ func RecvUserLogoutReq(pconfig *Config , preq *ss.MsgLogoutReq , from int) {
 				log.Err("%s save user_info failed! pack blob info fail! err:%v uid:%d", _func_, err, preq.Uid)
 				return
 			}
-			res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "HMSET", user_tab, "addr", puser_info.BasicInfo.Addr, "level",
+			res, err = pclient.RedisExeCmdSync(phead, "HMSET", user_tab, "addr", puser_info.BasicInfo.Addr, "level",
 				puser_info.BasicInfo.Level, FIELD_USER_INFO_ONLINE_LOGIC, -1, "blob_info", string(user_blob))
 		} else { //only update online-logic
-			res, err = pconfig.RedisClient.RedisExeCmdSync(phead, "HSET", user_tab, FIELD_USER_INFO_ONLINE_LOGIC, -1)
+			res, err = pclient.RedisExeCmdSync(phead, "HSET", user_tab, FIELD_USER_INFO_ONLINE_LOGIC, -1)
 		}
 
 		//Get Result
@@ -501,10 +504,19 @@ func cb_user_login_check_pass(comm_config *comm.CommConfig, result interface{}, 
 				break;
 			}
 
+			//pclient
+			pclient := SelectRedisClient(pconfig , REDIS_OPT_RW)
+			if pclient == nil {
+				log.Err("%s failed! no proper redis found! name:%s" , _func_ , preq.Name)
+				prsp.Result = ss.USER_LOGIN_RET_LOGIN_ERR
+				break
+			}
+
+
 			//try to lock
 			log.Debug("%s try to lock login. uid:%d name:%s" , _func_ , preq.Uid , preq.Name)
 			tab_name := fmt.Sprintf(FORMAT_TAB_USER_LOGIN_LOCK_PREFIX+"%s" , uid)
-			pconfig.RedisClient.RedisExeCmd(pconfig.Comm , cb_user_login_lock , cb_arg , "SET" , tab_name , uid , "EX" ,
+			pclient.RedisExeCmd(pconfig.Comm , cb_user_login_lock , cb_arg , "SET" , tab_name , uid , "EX" ,
 				LOGIN_LOCK_LIFE, "NX")
 			//tab_name := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%s", uid)
 			//pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_user_login_get_info, cb_arg, "HGETALL", tab_name)
@@ -582,11 +594,18 @@ func cb_user_login_lock(comm_config *comm.CommConfig, result interface{}, cb_arg
 		return
 	}
 
+	//pclient
+	pclient := SelectRedisClient(pconfig , REDIS_OPT_R)
+	if pclient == nil {
+		log.Err("%s failed! no proper redis found! name:%s" , _func_ , preq.Name)
+		return
+	}
+
 
 	//get user info
 	log.Debug("%s ok! try to get user_info. uid:%d name:%s" , _func_ , preq.Uid , preq.Name)
 	tab_name := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d", preq.Uid)
-	pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_user_login_get_info, cb_arg, "HGETALL", tab_name)
+	pclient.RedisExeCmd(pconfig.Comm, cb_user_login_get_info, cb_arg, "HGETALL", tab_name)
 }
 
 //cb_arg={0:preq 1:from_server}
@@ -768,10 +787,17 @@ func cb_user_login_get_info(comm_config *comm.CommConfig, result interface{}, cb
 			return
 		}
 
+		//pclient
+		pclient := SelectRedisClient(pconfig , REDIS_OPT_RW)
+		if pclient == nil {
+			log.Err("%s failed! no proper redis found! name:%s uid:%d" , _func_ , preq.Name , uid)
+			return
+		}
+
 		//update online_logic
 		log.Debug("%s update online logic!", _func_)
 		tab_name := fmt.Sprintf(FORMAT_TAB_USER_INFO_REFIX+"%d", uid)
-		pconfig.RedisClient.RedisExeCmd(pconfig.Comm, cb_update_online, append(cb_arg, pss_msg), "HSET", tab_name, "online_logic", from_serv)
+		pclient.RedisExeCmd(pconfig.Comm, cb_update_online, append(cb_arg, pss_msg), "HSET", tab_name, "online_logic", from_serv)
 		return
 	}
 

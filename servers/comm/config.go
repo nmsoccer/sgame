@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/rand"
+	"net"
 	"os"
 	"os/signal"
 	"sgame/lib/log"
@@ -99,6 +101,8 @@ func InitCommConfig(log_file string, name_space string, proc_id int) *CommConfig
 		return nil
 	}
 
+	//rand seed
+	rand.Seed(pconfig.StartTs + int64(proc_id))
 	return pconfig
 }
 
@@ -295,3 +299,26 @@ func ReadFile(file_name string , close bool) ([]byte , error) {
 
 	return b , nil
 }
+
+//Check Is NetError
+func IsNetError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	//net err
+	if net_err, ok := err.(net.Error); ok {
+		if net_err.Temporary() || net_err.Timeout() { //no data prepared
+			return false
+		} else { //other
+			//error
+		}
+	} else if err == io.EOF { //read a closed connection
+		//end of file
+	} else { //other
+		//
+	}
+
+	return true
+}
+
