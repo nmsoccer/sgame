@@ -52,7 +52,7 @@ A Simple Game Server Framework  一个简单的游戏服务端框架
     * 搜索replicaof 然后添加一行``replicaof 127.0.0.1 6600`` 作为其master
     * 搜索masterauth 然后添加一行 ``masterauth cbuju``
     * 执行``redis_server ./redis.conf &``拉起即可 
-  * 如果内存有限亦可以只保持6600一个实例，如此则需后续修改schat/servers/spush/db_serv.tmpl里的地址为主实例一个，否则会不断尝试重连备机报错    
+  * 如果内存有限亦可以只保持6600一个实例，如此则需后续修改sgame/servers/spush/db_serv.tmpl里的地址为主实例一个，否则会不断尝试重连备机报错    
 
 #### 必需库
 * **PROTOBUF-GO**  
