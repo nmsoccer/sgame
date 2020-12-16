@@ -710,7 +710,9 @@ func (pclient *tcp_client) handle_spec_pkg(pconfig *CommConfig, pserv *TcpServ, 
 	case lnet.PKG_OP_RSA_NEGO:
 		log.Info("%s pkg option:%d [rsa_nego]", _func_, pdata.flag)
 		//resp
-		pdata.data = make([]byte , 12)
+		msg, _ := GenRandStr(128)
+		pdata.data = make([]byte, len(msg))
+		copy(pdata.data, msg)
 		//decode by rsa_priv
 		decoded , err := lnet.RsaDecrypt(pkg_data , pserv.rsa_pri_key)
 		for {
@@ -731,8 +733,15 @@ func (pclient *tcp_client) handle_spec_pkg(pconfig *CommConfig, pserv *TcpServ, 
 				break
 			}
 			//accept des key
-			log.Info("%s accept des key:%v c_key:%d" , _func_ , decoded , pclient.key)
 			copy(pdata.data , "ok")
+			//gen and copy sha2
+			hash_enc_key := EncSha256(decoded)
+			log.Info("%s accept des key:%v c_key:%d sha2:%s", _func_, decoded, pclient.key , hash_enc_key)
+			pdata.data[8] = byte(len(hash_enc_key))
+			copy(pdata.data[9:] , hash_enc_key)
+
+
+			//set enc_key
 			pclient.enc_key = make([]byte , lnet.ENCRY_DES_KEY_LEN)
 			copy(pclient.enc_key , decoded)
 			pclient.enc_block = enc_block

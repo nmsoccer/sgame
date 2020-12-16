@@ -139,7 +139,7 @@ func AesDecrypt(block cipher.Block , cryted []byte, key []byte) ([]byte  , error
 /*******************RSA***********************/
 // 加密
 func RsaEncrypt(origData []byte , publicKey []byte) ([]byte, error) {
-	//解密pem格式的公钥
+	//公钥
 	block, _ := pem.Decode(publicKey)
 	if block == nil {
 		return nil, errors.New("public key error")

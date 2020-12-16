@@ -2,6 +2,7 @@ package comm
 
 import (
 	md52 "crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -322,3 +323,8 @@ func IsNetError(err error) bool {
 	return true
 }
 
+func EncSha256(p []byte) string {
+	block := sha256.New()
+	block.Write(p)
+	return hex.EncodeToString(block.Sum(nil))
+}

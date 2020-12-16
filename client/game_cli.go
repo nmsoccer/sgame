@@ -6,6 +6,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/des"
+	"crypto/sha256"
+	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
@@ -167,6 +169,16 @@ func RecvConnSpecPkg(tag uint8 , data []byte) {
 	case lnet.PKG_OP_RSA_NEGO:
 		v_print("%s rsa_nego pkg! result:%s\n" , _func_ , string(data))
 		if bytes.Compare(data[:2] , []byte("ok")) == 0 {
+			hash_key_len := data[8]
+			server_key_hash := string(data[9:9+hash_key_len])
+			local_key_hash := EncSha256(enc_key)
+			v_print("%s rsa_nego ok! hash_key_len:%d server_hash:%s local_hash:%s\n" , _func_ , hash_key_len , server_key_hash , local_key_hash)
+			if server_key_hash != local_key_hash {
+				v_print("%s key not match!\n" , _func_)
+				break
+			}
+			v_print("%s key valid!\n" , _func_)
+
 			enc_block , err = des.NewCipher(enc_key)
 			if err != nil {
 				v_print("%s new des block by rsa-nego failed! err:%v" , _func_ , err)
@@ -179,7 +191,11 @@ func RecvConnSpecPkg(tag uint8 , data []byte) {
 	}
 }
 
-
+func EncSha256(p []byte) string {
+	block := sha256.New()
+	block.Write(p)
+	return hex.EncodeToString(block.Sum(nil))
+}
 
 func RecvPkg(conn *net.TCPConn) {
 	var _func_ = "<RecvPkg>"
